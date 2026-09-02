@@ -24,10 +24,17 @@ Add the dependency and one plugin. That is the whole integration.
 {
   "config": { "mock": "srf" },
   "devDependencies": {
-    "00_srf-news-platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
+    "00_srf-news-platform-mock": "github:srf-storytellingdesk/00_srf-news-platform-mock#2026-09-02"
   }
 }
 ```
+
+Pin the date tag of a regeneration, never `#main`. Every push of regenerated
+mocks is tagged with the day it was published, `YYYY-MM-DD` — see
+[Tagging a regeneration](#tagging-a-regeneration). The tag is what makes a
+fork's platform chrome stable: it changes when someone edits that date, and at
+no other time. `#main` would hand each install whatever was scraped last, so two
+machines could render the same article in different chrome.
 
 ```js
 // vite.config.js
@@ -52,6 +59,20 @@ Add the generated entry file to the fork's `.gitignore`:
 # written by 00_srf-news-platform-mock on every dev/build run
 /index.html
 ```
+
+### Moving a fork to newer mocks
+
+Bump the date in the dependency spec and reinstall:
+
+```sh
+git ls-remote --tags https://github.com/srf-storytellingdesk/00_srf-news-platform-mock
+# edit package.json, then
+pnpm install
+```
+
+Nothing else changes — brand keys, the plugin call and the asset URLs are the
+same across regenerations. The dev server prints which mock it loaded and when
+that mock was scraped, so a glance at the startup line confirms the bump landed.
 
 ### What the plugin does
 
@@ -146,6 +167,34 @@ scrape that silently lost the footer or a font.
 
 Never hand-edit anything under `mocks/` — the next regeneration overwrites it.
 Fix the brand config or the partial instead.
+
+### Tagging a regeneration
+
+Regenerated mocks are committed and pushed as one unit, and that push is tagged
+with the day's date. The tag is the only thing forks depend on, so a push that
+changes `mocks/` without one is invisible to them.
+
+```sh
+pnpm mock:all                       # scrape all five, screenshot each
+git add mocks screenshots
+git commit -m "regenerate mocks"
+git tag 2026-09-02                  # today, YYYY-MM-DD
+git push origin main 2026-09-02
+```
+
+- **One tag per push.** A second regeneration on the same day gets a counter:
+  `2026-09-02.2`, then `.3`.
+- **Never move or delete a published tag.** A fork resolves it to a commit once
+  and records that commit in its lockfile; repointing the tag means two forks
+  install different mocks from an identical dependency spec.
+- **The tag is this repo's version.** `package.json`'s `version` is not
+  maintained — there is nothing to publish it to.
+- A tag is also worth pushing after a change to `integration/` that forks need,
+  even when no mock was rescraped. Same format, same rules.
+
+`pnpm brands` and each `mock.json`'s `generatedAt` record when a mock was
+scraped; the tag records when it was published to forks. The two differ whenever
+a scrape is reviewed for a day or two before it goes out.
 
 ### Repository layout
 

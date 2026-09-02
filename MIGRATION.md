@@ -66,13 +66,20 @@ Replace the old sandbox entry in `devDependencies` with:
 ```json
 {
   "devDependencies": {
-    "00_srf-news-platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
+    "00_srf-news-platform-mock": "github:srf-storytellingdesk/00_srf-news-platform-mock#2026-09-02"
   }
 }
 ```
 
 Still a plain git dependency — this repo is not published to a registry, so
-there is nothing to authenticate against and no version to bump.
+there is nothing to authenticate against. The date tag is its version: every
+push of regenerated mocks is tagged `YYYY-MM-DD`, and a fork pins one of those
+instead of `#main` so its platform chrome cannot change under it. Pick the
+newest one:
+
+```sh
+git ls-remote --tags https://github.com/srf-storytellingdesk/00_srf-news-platform-mock
+```
 
 ### 2. Rename the brand field
 

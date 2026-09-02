@@ -25,7 +25,7 @@ import {
   getUsedClassesFromHtml,
   mergeAllCssFiles,
   parseAndDownloadFonts,
-  pointSrcAndHrefUrlsToSandbox,
+  pointSrcAndHrefUrlsToMock,
   stripOriginFromCssUrls,
 } from './utils/file-helper.js'
 
@@ -84,9 +84,9 @@ export async function generateMock(brand) {
 
   let html = await scrapePage(config, assetsDir, fetchUrlOrigin)
 
-  // Rewrite same-origin URLs to the sandbox asset prefix, e.g.
-  // /deeply/nested/srf-favicon-BRxTgjQQ.png -> /sandbox-assets/deeply/nested/…
-  html = pointSrcAndHrefUrlsToSandbox(html, fetchUrlOrigin)
+  // Rewrite same-origin URLs to the mock asset prefix, e.g.
+  // /deeply/nested/srf-favicon-BRxTgjQQ.png -> /mock-assets/deeply/nested/…
+  html = pointSrcAndHrefUrlsToMock(html, fetchUrlOrigin)
 
   // Pull <style> blocks out of the HTML so they end up in merged.css. Puppeteer
   // serialises relative URLs as absolute, so strip the origin again afterwards.

@@ -56,13 +56,13 @@ export async function mergeAllCssFiles(
     let fileContent = await fs.readFile(file, 'utf8')
     // fileContent = removeUnusedClasses(fileContent, classesUsed);
     fileContent = resolveRelativeCssUrls(fileContent, path.relative(dir, file))
-    fileContent = pointAssetUrlsToSandbox(fileContent)
+    fileContent = pointAssetUrlsToMock(fileContent)
     merged += fileContent
     merged += '\n'
   }
   if (extraCss) {
     merged += `/* --- inline styles --- */\n`
-    merged += pointAssetUrlsToSandbox(extraCss)
+    merged += pointAssetUrlsToMock(extraCss)
     merged += '\n'
   }
   const mergedPath = path.join(dir, mergedName)
@@ -146,24 +146,24 @@ export function resolveRelativeCssUrls(cssContent, cssRelativePath) {
   )
 }
 
-export function pointAssetUrlsToSandbox(input) {
+export function pointAssetUrlsToMock(input) {
   // Only rewrite URLs inside url(...) in CSS
   return String(input).replace(
     /url\((['"]?)(\/[^'")]*)\1\)/g,
     (match, quote, url) => {
       if (
-        url.startsWith('/sandbox-assets/') ||
+        url.startsWith('/mock-assets/') ||
         url.startsWith('//') ||
         url.match(/^https?:\//)
       ) {
         return match
       }
-      return `url(${quote}../sandbox-assets${url}${quote})`
+      return `url(${quote}../mock-assets${url}${quote})`
     },
   )
 }
 
-export function pointSrcAndHrefUrlsToSandbox(input, origin = '') {
+export function pointSrcAndHrefUrlsToMock(input, origin = '') {
   let out = String(input)
   // Strip same-origin absolute URLs to root-relative so the rewrite below picks them up
   if (origin) {
@@ -174,8 +174,8 @@ export function pointSrcAndHrefUrlsToSandbox(input, origin = '') {
     )
   }
   out = out.replace(
-    /((?:src|href)=["'])(\/(?!sandbox-assets\/|\/|https?:\/\/)[^"']+)["']/g,
-    (match, prefix, url) => `${prefix}/sandbox-assets/${url.slice(1)}"`,
+    /((?:src|href)=["'])(\/(?!mock-assets\/|\/|https?:\/\/)[^"']+)["']/g,
+    (match, prefix, url) => `${prefix}/mock-assets/${url.slice(1)}"`,
   )
   // srcset: handle multiple URLs separated by comma, possibly with descriptors
   out = out.replace(/(srcset=["'])([^"']+)["']/g, (match, prefix, value) => {
@@ -186,14 +186,14 @@ export function pointSrcAndHrefUrlsToSandbox(input, origin = '') {
         let [url] = parts
         const rest = parts.slice(1)
         if (
-          url.startsWith('/sandbox-assets/') ||
+          url.startsWith('/mock-assets/') ||
           url.startsWith('http://') ||
           url.startsWith('https://') ||
           url.startsWith('//')
         ) {
           return part.trim()
         }
-        if (url.startsWith('/')) url = `/sandbox-assets/${url.slice(1)}`
+        if (url.startsWith('/')) url = `/mock-assets/${url.slice(1)}`
         return [url, ...rest].join(' ')
       })
       .join(', ')
@@ -206,7 +206,7 @@ const ASSET_EXT =
   /\.(svg|png|jpe?g|gif|webp|avif|bmp|ico|woff2?|ttf|otf|eot)(\?[^"']*)?$/i
 
 export async function downloadMissingAssets(html, outputDir, origin) {
-  const pattern = /(?:src|href)=["']\/sandbox-assets\/([^"'#?]+)/g
+  const pattern = /(?:src|href)=["']\/mock-assets\/([^"'#?]+)/g
   const paths = new Set()
   let match
   while ((match = pattern.exec(html)) !== null) {

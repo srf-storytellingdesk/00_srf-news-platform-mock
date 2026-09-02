@@ -137,10 +137,10 @@ describe('platformMock vite plugin', () => {
   })
 
   it('honours a custom htmlPath', () => {
-    platformMock({ brand: 'srf', htmlPath: 'sandbox/entry.html' }) //
+    platformMock({ brand: 'srf', htmlPath: 'mock/entry.html' }) //
       .configResolved(fakeConfig('serve'))
 
-    expect(fs.existsSync(path.join(root, 'sandbox/entry.html'))).toBe(true)
+    expect(fs.existsSync(path.join(root, 'mock/entry.html'))).toBe(true)
     expect(fs.existsSync(path.join(root, 'index.html'))).toBe(false)
   })
 
@@ -148,7 +148,7 @@ describe('platformMock vite plugin', () => {
     const plugin = platformMock({ brand: 'rsi', assets: 'copy' })
     plugin.configResolved(fakeConfig('serve'))
 
-    const mirrored = path.join(root, 'public', 'sandbox-assets')
+    const mirrored = path.join(root, 'public', 'mock-assets')
     expect(fs.existsSync(path.join(mirrored, 'merged.css'))).toBe(true)
 
     const stamp = path.join(mirrored, '.platform-mock-stamp')

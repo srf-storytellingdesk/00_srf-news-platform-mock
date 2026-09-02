@@ -44,13 +44,13 @@ const BANNER_ID = 'srf-news-platform-mock:generated'
  * @property {'minimal'|'mock'} [buildHtml]
  *   Entry HTML used by `vite build`. `'minimal'` (default) builds a bare
  *   mount-point document: forks strip the mock chrome from `dist/` anyway, and
- *   skipping it avoids Vite warning about every unresolvable `/sandbox-assets`
+ *   skipping it avoids Vite warning about every unresolvable `/mock-assets`
  *   URL. `'mock'` builds the full platform page — pair it with
  *   `assets: 'copy'` if you want a self-contained static preview.
  * @property {'serve'|'copy'} [assets]
  *   `'serve'` (default) streams the assets straight out of node_modules via
  *   dev middleware — nothing lands in the fork's working tree. `'copy'`
- *   mirrors them into `<publicDir>/sandbox-assets`, which reproduces the old
+ *   mirrors them into `<publicDir>/mock-assets`, which reproduces the old
  *   symlink behaviour and makes them part of the build output.
  * @property {boolean} [verbose]
  *   Log a one-line summary when the dev server starts. Defaults to `true`.
@@ -103,7 +103,7 @@ export default function platformMock(options = {}) {
       writeGeneratedFile(resolvedHtmlPath, withBanner(html, mock, command))
 
       if (assets === 'copy') {
-        mirrorAssets(mock, path.join(config.publicDir, 'sandbox-assets'))
+        mirrorAssets(mock, path.join(config.publicDir, 'mock-assets'))
       }
     },
 
@@ -111,7 +111,7 @@ export default function platformMock(options = {}) {
       if (assets === 'serve') {
         const middleware = createStaticMiddleware(mock.assetsDir)
         // Two mounts, both load-bearing: Vite's dev HTML transform rewrites the
-        // mock's root-relative asset URLs to `<base>/sandbox-assets/…`, so with
+        // mock's root-relative asset URLs to `<base>/mock-assets/…`, so with
         // a non-root base that is where most requests land. The bare mount
         // still serves what the transform never sees — url() references inside
         // merged.css, and anything requested at runtime.
@@ -137,9 +137,9 @@ export default function platformMock(options = {}) {
 
 /** URL prefixes the asset middleware is mounted on. */
 function assetMountPaths(base) {
-  const paths = new Set(['/sandbox-assets'])
+  const paths = new Set(['/mock-assets'])
   if (base && base !== '/') {
-    paths.add(path.posix.join('/', base, 'sandbox-assets'))
+    paths.add(path.posix.join('/', base, 'mock-assets'))
   }
   return paths
 }

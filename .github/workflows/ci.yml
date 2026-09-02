@@ -36,6 +36,6 @@ jobs:
           for brand in srf rts rsi rtr swi; do
             test -f "mocks/$brand/index.html"      || { echo "missing mocks/$brand/index.html"; exit 1; }
             test -f "mocks/$brand/mock.json"       || { echo "missing mocks/$brand/mock.json"; exit 1; }
-            test -d "mocks/$brand/sandbox-assets"  || { echo "missing mocks/$brand/sandbox-assets"; exit 1; }
+            test -d "mocks/$brand/mock-assets"  || { echo "missing mocks/$brand/mock-assets"; exit 1; }
           done
           echo "All five brand mocks present."

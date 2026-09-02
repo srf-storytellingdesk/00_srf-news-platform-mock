@@ -42,7 +42,7 @@ One plugin in `vite.config.js`. Nothing in the working tree but a gitignored
 ```
 00_srf-news-template
 ├── package.json          devDependency: 00_srf-news-platform-mock
-│                         config.sandbox: "srf"     (no postinstall)
+│                         config.mock: "srf"        (no postinstall)
 ├── vite.config.js        plugins: [platformMock({ brand: … }), …]
 └── index.html            generated each run, gitignored
 ```
@@ -51,6 +51,7 @@ One plugin in `vite.config.js`. Nothing in the working tree but a gitignored
 | ------------------------- | --------------------- | ------------------------------- |
 | Path into the dependency  | hardcoded in the fork | `resolveMock()` / `exports` map |
 | Files in the working tree | 2 absolute symlinks   | 1 generated `index.html`        |
+| Brand field               | `config.sandbox`      | `config.mock`                   |
 | Install hook              | postinstall required  | none                            |
 | Switching brand           | edit + `pnpm install` | edit + restart dev server       |
 | Mock chrome in `dist/`    | built, then deleted   | never built                     |
@@ -73,9 +74,20 @@ Replace the old sandbox entry in `devDependencies` with:
 Still a plain git dependency — this repo is not published to a registry, so
 there is nothing to authenticate against and no version to bump.
 
-`config.sandbox` stays exactly as it is — the brand keys are unchanged.
+### 2. Rename the brand field
 
-### 2. Drop the postinstall hook
+The brand keys are unchanged — only the field that holds them:
+
+```diff
+   "config": {
+-    "sandbox": "srf"
++    "mock": "srf"
+   }
+```
+
+If `pnpm run translate` writes that field, point it at the new name too.
+
+### 3. Drop the postinstall hook
 
 ```diff
    "scripts": {
@@ -86,7 +98,7 @@ there is nothing to authenticate against and no version to bump.
 Then delete `src/scripts/utils/setup-sandbox.js`. If `.pnpmrc` only carried
 `blockExoticSubdeps=false` for it, that can go too.
 
-### 3. Add the plugin
+### 4. Add the plugin
 
 ```diff
 + import platformMock from '00_srf-news-platform-mock/vite'
@@ -98,7 +110,7 @@ Then delete `src/scripts/utils/setup-sandbox.js`. If `.pnpmrc` only carried
 
   export default defineConfig({
     plugins: [
-+     platformMock({ brand: pkg.config.sandbox }),
++     platformMock({ brand: pkg.config.mock }),
       react(),
       createHtmlPlugin({ … }),
 ```
@@ -107,7 +119,7 @@ Put it first: it writes the entry HTML before Vite reads it, and its `<%= id %>`
 / `<%= title %>` placeholders are still filled in by `createHtmlPlugin` exactly
 as before.
 
-### 4. Clean up the symlinks and `.gitignore`
+### 5. Clean up the symlinks and `.gitignore`
 
 ```sh
 rm -f index.html
@@ -117,7 +129,7 @@ rm -rf public/sandbox-assets
 `.gitignore` keeps `/index.html`, and `public/sandbox-assets` is no longer
 created at all — that line can stay as a harmless leftover or be removed.
 
-### 5. Optional: drop the exclude plugin
+### 6. Optional: drop the exclude plugin
 
 `newsSrfSandboxExcludePlugin` deleted `dist/index.html` and
 `dist/sandbox-assets/` after every build. With `buildHtml: 'minimal'` (the
@@ -127,12 +139,12 @@ to remove.
 Keep it if something downstream relies on `dist/index.html` being absent —
 `vite build` still writes a small one, and the exclude plugin still removes it.
 
-### 6. Verify
+### 7. Verify
 
 ```sh
 pnpm install
 pnpm dev            # platform chrome around your article, no 404s
-pnpm build          # check dist/ contains no sandbox-assets/
+pnpm build          # check dist/ contains no mock-assets/
 ```
 
 The dev server logs which mock it picked up:
@@ -143,9 +155,9 @@ The dev server logs which mock it picked up:
 
 ## Switching brands
 
-Same as before — `config.sandbox` in `package.json` — but a dev-server restart
-is now enough, no reinstall. `pnpm run translate` needs one adjustment: it can
-stop running `pnpm i` after changing `config.sandbox`.
+Same field as before, under its new name — `config.mock` in `package.json` — but
+a dev-server restart is now enough, no reinstall. `pnpm run translate` needs one
+adjustment: it can stop running `pnpm i` after changing the brand.
 
 Per-run override without touching `package.json`:
 
@@ -156,13 +168,13 @@ PLATFORM_MOCK_BRAND=rts pnpm dev
 ## If you need the old behaviour
 
 `assets: 'copy'` reproduces the symlink setup as a real copy — assets are
-mirrored into `public/sandbox-assets` and become part of the build output:
+mirrored into `public/mock-assets` and become part of the build output:
 
 ```js
-platformMock({ brand: pkg.config.sandbox, assets: 'copy', buildHtml: 'mock' })
+platformMock({ brand: pkg.config.mock, assets: 'copy', buildHtml: 'mock' })
 ```
 
-Add `public/sandbox-assets` back to `.gitignore` if you use it.
+Add `public/mock-assets` back to `.gitignore` if you use it.
 
 ## What is not here
 

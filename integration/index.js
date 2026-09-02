@@ -18,10 +18,10 @@ export const MOCKS_DIR = path.join(PACKAGE_ROOT, 'mocks')
  * URL prefix the mock HTML and CSS reference their assets under. Baked into
  * every generated mock, so it is part of the contract rather than an option.
  */
-export const ASSETS_URL = '/sandbox-assets'
+export const ASSETS_URL = '/mock-assets'
 
 /** Directory name the assets live in inside a mock directory. */
-export const ASSETS_DIRNAME = 'sandbox-assets'
+export const ASSETS_DIRNAME = 'mock-assets'
 
 /** Brands shipped by this package, in the order they are usually listed. */
 export const BRANDS = ['srf', 'rts', 'rsi', 'rtr', 'swi']

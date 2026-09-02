@@ -4,8 +4,8 @@ import {
   extractInlineStyles,
   getDefinedClasses,
   getUsedClassesFromHtml,
-  pointAssetUrlsToSandbox,
-  pointSrcAndHrefUrlsToSandbox,
+  pointAssetUrlsToMock,
+  pointSrcAndHrefUrlsToMock,
   removeUnusedClasses,
   resolveRelativeCssUrls,
   stripOriginFromCssUrls,
@@ -96,74 +96,74 @@ describe('extractInlineStyles', () => {
 // The two rewriters are deliberately separate: the merged CSS lives inside the
 // asset directory and needs URLs relative to it, while the HTML sits one level
 // above and needs root-relative ones.
-describe('pointAssetUrlsToSandbox (CSS)', () => {
+describe('pointAssetUrlsToMock (CSS)', () => {
   it('rewrites unquoted url()', () => {
-    expect(pointAssetUrlsToSandbox('background: url(/foo/bar.png);')).toBe(
-      'background: url(../sandbox-assets/foo/bar.png);',
+    expect(pointAssetUrlsToMock('background: url(/foo/bar.png);')).toBe(
+      'background: url(../mock-assets/foo/bar.png);',
     )
   })
 
   it('rewrites quoted url() and keeps the quote style', () => {
     expect(
-      pointAssetUrlsToSandbox(
+      pointAssetUrlsToMock(
         `a{background:url('/foo/bar.png')}b{src:url("/f/x.woff2")}`,
       ),
     ).toBe(
-      `a{background:url('../sandbox-assets/foo/bar.png')}b{src:url("../sandbox-assets/f/x.woff2")}`,
+      `a{background:url('../mock-assets/foo/bar.png')}b{src:url("../mock-assets/f/x.woff2")}`,
     )
   })
 
   it('leaves already-rewritten, protocol-relative and remote URLs alone', () => {
     const css =
-      'a{background:url(/sandbox-assets/x.png)}' +
+      'a{background:url(/mock-assets/x.png)}' +
       'b{background:url(//cdn.example/x.png)}' +
       'c{background:url(https://example.com/x.png)}'
-    expect(pointAssetUrlsToSandbox(css)).toBe(css)
+    expect(pointAssetUrlsToMock(css)).toBe(css)
   })
 
   it('does not touch src/href attributes — that is the HTML rewriter’s job', () => {
     const html = '<img src="/foo/bar.png" />'
-    expect(pointAssetUrlsToSandbox(html)).toBe(html)
+    expect(pointAssetUrlsToMock(html)).toBe(html)
   })
 })
 
-describe('pointSrcAndHrefUrlsToSandbox (HTML)', () => {
+describe('pointSrcAndHrefUrlsToMock (HTML)', () => {
   it('rewrites root-relative src and href attributes', () => {
     expect(
-      pointSrcAndHrefUrlsToSandbox(
+      pointSrcAndHrefUrlsToMock(
         '<img src="/foo/bar.png" /><link href="/a/b.css" />',
       ),
     ).toBe(
-      '<img src="/sandbox-assets/foo/bar.png" />' +
-        '<link href="/sandbox-assets/a/b.css" />',
+      '<img src="/mock-assets/foo/bar.png" />' +
+        '<link href="/mock-assets/a/b.css" />',
     )
   })
 
   it('strips the scraped origin before rewriting', () => {
     expect(
-      pointSrcAndHrefUrlsToSandbox(
+      pointSrcAndHrefUrlsToMock(
         '<img src="https://www.srf.ch/foo/bar.png" />',
         'https://www.srf.ch',
       ),
-    ).toBe('<img src="/sandbox-assets/foo/bar.png" />')
+    ).toBe('<img src="/mock-assets/foo/bar.png" />')
   })
 
   it('rewrites every candidate in a srcset, descriptors intact', () => {
     expect(
-      pointSrcAndHrefUrlsToSandbox(
+      pointSrcAndHrefUrlsToMock(
         '<img srcset="/a/1.webp 320w, /a/2.webp 640w" />',
       ),
     ).toBe(
-      '<img srcset="/sandbox-assets/a/1.webp 320w, /sandbox-assets/a/2.webp 640w" />',
+      '<img srcset="/mock-assets/a/1.webp 320w, /mock-assets/a/2.webp 640w" />',
     )
   })
 
   it('leaves already-rewritten and cross-origin URLs alone', () => {
     const html =
-      '<img src="/sandbox-assets/x.png" />' +
+      '<img src="/mock-assets/x.png" />' +
       '<img src="https://cdn.example/x.png" />' +
       '<img srcset="//cdn.example/x.png 1x" />'
-    expect(pointSrcAndHrefUrlsToSandbox(html, 'https://www.srf.ch')).toBe(html)
+    expect(pointSrcAndHrefUrlsToMock(html, 'https://www.srf.ch')).toBe(html)
   })
 })
 

@@ -22,7 +22,7 @@ Add the dependency and one plugin. That is the whole integration.
 ```json
 // package.json
 {
-  "config": { "sandbox": "srf" },
+  "config": { "mock": "srf" },
   "devDependencies": {
     "00_srf-news-platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
   }
@@ -37,7 +37,7 @@ import pkg from './package.json'
 
 export default defineConfig({
   plugins: [
-    platformMock({ brand: pkg.config.sandbox }),
+    platformMock({ brand: pkg.config.mock }),
     react(),
     // …the rest of your plugins
   ],
@@ -55,10 +55,10 @@ Add the generated entry file to the fork's `.gitignore`:
 
 ### What the plugin does
 
-|                      | dev (`vite`)                                     | build (`vite build`)        |
-| -------------------- | ------------------------------------------------ | --------------------------- |
-| `index.html`         | the full mock, written to the project root       | a bare mount-point document |
-| `/sandbox-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                 |
+|                   | dev (`vite`)                                     | build (`vite build`)        |
+| ----------------- | ------------------------------------------------ | --------------------------- |
+| `index.html`      | the full mock, written to the project root       | a bare mount-point document |
+| `/mock-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                 |
 
 The build entry is deliberately minimal: forks strip the mock chrome from
 `dist/` anyway, so building it would only cost time and produce a warning for
@@ -67,16 +67,16 @@ full page in the build output.
 
 ### Plugin options
 
-| Option      | Default             | Meaning                                                                                                                                                           |
-| ----------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                                  |
-| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                            |
-| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                            |
-| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                    |
-| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                              |
-| `buildHtml` | `'minimal'`         | `'minimal'` \| `'mock'` — see the table above.                                                                                                                    |
-| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/sandbox-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
-| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                      |
+| Option      | Default             | Meaning                                                                                                                                                        |
+| ----------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                               |
+| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                         |
+| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                         |
+| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                 |
+| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                           |
+| `buildHtml` | `'minimal'`         | `'minimal'` \| `'mock'` — see the table above.                                                                                                                 |
+| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
+| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
 
 ### Node API
 
@@ -92,8 +92,8 @@ const mock = resolveMock('rts')
 //   brand: 'rts', lang: 'fr',
 //   dir:       '…/mocks/rts',
 //   htmlPath:  '…/mocks/rts/index.html',
-//   assetsDir: '…/mocks/rts/sandbox-assets',
-//   assetsUrl: '/sandbox-assets',
+//   assetsDir: '…/mocks/rts/mock-assets',
+//   assetsUrl: '/mock-assets',
 //   manifest:  { …mock.json… },
 // }
 ```
@@ -166,7 +166,7 @@ src/                    Generator — build-time only, never imported by a fork
 
 mocks/<brand>/          Generated, committed
   index.html            the frozen page
-  sandbox-assets/       CSS, fonts, images it references
+  mock-assets/          CSS, fonts, images it references
   mock.json             brand, lang, source URL, asset count, date
 
 preview/                Local dev harness (stands in for a fork's entry)
@@ -178,14 +178,14 @@ screenshots/            Reference renders
 1. Puppeteer loads `fetchUrl` from the brand config and scrolls to the bottom so
    lazy media loads.
 2. Every same-origin CSS, image and font response is saved to
-   `mocks/<brand>/sandbox-assets/`.
+   `mocks/<brand>/mock-assets/`.
 3. `deleteSelectors` strips scripts, consent tooling and anything else that
    needs a live backend.
 4. `textReplacements` and `insertSelectors` replace the editorial copy with
    placeholders and splice in the partials — the template mount point
    (`{{ARTICLE_CONTENT}}`) and the top-media slot (`{{TOP_MEDIA_ELEMENT}}`).
 5. All stylesheets are merged into one `merged.css`, asset URLs are rewritten to
-   the `/sandbox-assets/` prefix, and referenced fonts are fetched.
+   the `/mock-assets/` prefix, and referenced fonts are fetched.
 6. The HTML is formatted with Prettier and written together with `mock.json`.
 
 No editorial text survives step 4 — the mocks carry chrome and layout only.
@@ -199,7 +199,7 @@ No editorial text survives step 4 — the mocks carry chrome and layout only.
    and point `embedTemplate` at it.
 4. `pnpm mock <key>`, check the screenshot, commit.
 
-### The `/sandbox-assets` prefix
+### The `/mock-assets` prefix
 
 That URL prefix is baked into every generated `index.html` and `merged.css`, so
 it is part of the contract rather than an option — `ASSETS_URL` in

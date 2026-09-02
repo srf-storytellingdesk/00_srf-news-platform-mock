@@ -1,9 +1,6 @@
 /**
  * Vite integration for 00_srf-news-platform-mock.
  *
- * Replaces the old postinstall-plus-absolute-symlink setup: a fork adds one
- * plugin to its `vite.config.js` and gets the platform chrome in dev without
- * anything being symlinked, copied into the repo, or reached into by path.
  *
  *   import platformMock from '00_srf-news-platform-mock/vite'
  *

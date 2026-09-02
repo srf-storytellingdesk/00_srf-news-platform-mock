@@ -1,8 +1,8 @@
 /**
- * Public Node API of @srf-news/platform-mock.
+ * Public Node API of 00_srf-news-platform-mock.
  *
  * This module is the ONLY supported way to locate a mock. Consumers must never
- * reach into the package layout by hand (`node_modules/.../mocks/srf/...`) —
+ * reach into this repo's layout by hand (`node_modules/.../mocks/srf/...`) —
  * go through `resolveMock()` so the internal layout stays free to change.
  */
 import fs from 'node:fs'
@@ -67,7 +67,7 @@ export function resolveMock(brand) {
     throw new Error(
       `[platform-mock] Unknown or ungenerated brand "${brand}". ` +
         `Available: ${listBrands().join(', ') || '(none)'}. ` +
-        `Run \`pnpm mock ${brand}\` in @srf-news/platform-mock to generate it.`,
+        `Run \`pnpm mock ${brand}\` in 00_srf-news-platform-mock to generate it.`,
     )
   }
 

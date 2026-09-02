@@ -1,5 +1,6 @@
 {
-  "name": "@srf-news/platform-mock",
+  "name": "00_srf-news-platform-mock",
+  "private": true,
   "version": "1.0.0",
   "description": "Offline mocks of SRG SSR article pages (SRF, RTS, RSI, RTR, SWI) plus the Vite integration that serves them to 00_srf-news-template forks.",
   "keywords": [

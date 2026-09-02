@@ -1,8 +1,8 @@
-# Migrating a fork from `00_srf-news-sandbox`
+# Migrating a fork to the platform-mock plugin
 
-This package replaces the sandbox repo's template half. The mocks themselves are
-byte-identical to what `00_srf-news-sandbox` generated — only the way a fork
-gets at them changed.
+This repo replaces the template half of the old sandbox dependency. The mocks
+themselves are byte-identical to the ones a fork got before — only the way a
+fork gets at them changed.
 
 ## What changed, and why
 
@@ -10,21 +10,20 @@ gets at them changed.
 
 ```
 00_srf-news-template
-├── package.json          dependency: 00_srf-news-sandbox (whole repo, #main)
+├── package.json          dependency: the sandbox repo (whole repo, #main)
 │                         config.sandbox: "srf"
 │                         postinstall: node ./src/scripts/utils/setup-sandbox.js
-├── index.html         →  /Users/you/Dev/00_srf-news-template/node_modules/
-│                         00_srf-news-sandbox/template/srf/index.html
+├── index.html         →  absolute symlink into node_modules/…/template/srf/index.html
 └── public/
-    └── sandbox-assets →  …/00_srf-news-sandbox/template/srf/public/sandbox-assets
+    └── sandbox-assets →  absolute symlink into …/template/srf/public/sandbox-assets
 ```
 
 Five problems, all of them structural:
 
-1. **Deep reach-in.** `setup-sandbox.js` hardcoded
-   `node_modules/00_srf-news-sandbox/template/<brand>/…`. Any reorganisation of
-   the sandbox repo broke every fork at once, and there was no way to tell which
-   parts of its layout were public and which were internal.
+1. **Deep reach-in.** `setup-sandbox.js` hardcoded a path through
+   `node_modules/<dependency>/template/<brand>/…`. Any reorganisation of the
+   dependency broke every fork at once, and there was no way to tell which parts
+   of its layout were public and which were internal.
 2. **Absolute symlinks.** The links stored machine-specific paths, so a fork's
    working tree was not portable — CI, Docker, a colleague's checkout and
    Windows all needed the postinstall to have run on that exact machine.
@@ -42,7 +41,7 @@ One plugin in `vite.config.js`. Nothing in the working tree but a gitignored
 
 ```
 00_srf-news-template
-├── package.json          devDependency: @srf-news/platform-mock
+├── package.json          devDependency: 00_srf-news-platform-mock
 │                         config.sandbox: "srf"     (no postinstall)
 ├── vite.config.js        plugins: [platformMock({ brand: … }), …]
 └── index.html            generated each run, gitignored
@@ -61,12 +60,18 @@ One plugin in `vite.config.js`. Nothing in the working tree but a gitignored
 
 ### 1. Swap the dependency
 
-```diff
-   "devDependencies": {
--    "00_srf-news-sandbox": "git+https://github.com/srf-storytellingdesk/00_srf-news-sandbox#main"
-+    "@srf-news/platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
-   }
+Replace the old sandbox entry in `devDependencies` with:
+
+```json
+{
+  "devDependencies": {
+    "00_srf-news-platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
+  }
+}
 ```
+
+Still a plain git dependency — this repo is not published to a registry, so
+there is nothing to authenticate against and no version to bump.
 
 `config.sandbox` stays exactly as it is — the brand keys are unchanged.
 
@@ -84,7 +89,7 @@ Then delete `src/scripts/utils/setup-sandbox.js`. If `.pnpmrc` only carried
 ### 3. Add the plugin
 
 ```diff
-+ import platformMock from '@srf-news/platform-mock/vite'
++ import platformMock from '00_srf-news-platform-mock/vite'
 +
 - import { name } from './package.json'
 + import pkg from './package.json'
@@ -162,11 +167,11 @@ Add `public/sandbox-assets` back to `.gitignore` if you use it.
 ## What is not here
 
 The **theme generator** (`pnpm theme`, `theme-override/themeVariables.scss`, the
-`_newsColors.scss` lookup) was deliberately left out of this package. It scrapes
-dark-mode CSS and emits SCSS for the template's
-`cmsOverrides/themeVariables.scss` — a different job with a different output,
-and it reached back into `00_srf-news-template` to read its colour variables.
+`_newsColors.scss` lookup) was deliberately left out. It scrapes dark-mode CSS
+and emits SCSS for the template's `cmsOverrides/themeVariables.scss` — a
+different job with a different output, and it reached back into
+`00_srf-news-template` to read its colour variables.
 
-It still lives in `00_srf-news-sandbox`. Keep that repo checked out for theme
-work, or move the generator into the template repo itself, where the SCSS it
-reads and writes already lives.
+Keep using the existing theme tooling where it lives today, or move the
+generator into the template repo itself, where the SCSS it reads and writes
+already lives.

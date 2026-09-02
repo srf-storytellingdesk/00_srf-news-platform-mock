@@ -182,7 +182,7 @@ async function writeManifest(outDir, brand, config, assetsDir) {
     assetsUrl: `/${ASSETS_DIRNAME}`,
     assetCount: await countFiles(assetsDir),
     generatedAt: new Date().toISOString().slice(0, 10),
-    generatedBy: '@srf-news/platform-mock',
+    generatedBy: '00_srf-news-platform-mock',
   }
   const manifestPath = path.join(outDir, 'mock.json')
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')

@@ -10,9 +10,10 @@ A mock is a real article page, scraped once and frozen: the full platform chrome
 placeholders and a mount point where the fork renders its own article. It needs
 no network, no consent layer and no CMS.
 
-> Successor to `00_srf-news-sandbox`. The theme generator is **not** part of
-> this package — this repo does one thing: produce and serve platform mocks. See
-> [MIGRATION.md](MIGRATION.md) for what changed and how to move a fork over.
+> This repo is not published to a registry — forks install it straight from git.
+> The theme generator is **not** part of it: this repo does one thing, produce
+> and serve platform mocks. See [MIGRATION.md](MIGRATION.md) for what changed
+> and how to move a fork over.
 
 ## Using a mock in a fork
 
@@ -23,14 +24,14 @@ Add the dependency and one plugin. That is the whole integration.
 {
   "config": { "sandbox": "srf" },
   "devDependencies": {
-    "@srf-news/platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
+    "00_srf-news-platform-mock": "git+https://github.com/srf-storytellingdesk/00_srf-news-platform-mock#main"
   }
 }
 ```
 
 ```js
 // vite.config.js
-import platformMock from '@srf-news/platform-mock/vite'
+import platformMock from '00_srf-news-platform-mock/vite'
 
 import pkg from './package.json'
 
@@ -48,7 +49,7 @@ Then `pnpm dev`. No postinstall hook, no symlinks, nothing copied into the repo.
 Add the generated entry file to the fork's `.gitignore`:
 
 ```gitignore
-# written by @srf-news/platform-mock on every dev/build run
+# written by 00_srf-news-platform-mock on every dev/build run
 /index.html
 ```
 
@@ -80,11 +81,11 @@ full page in the build output.
 ### Node API
 
 For anything that is not Vite — a Storybook config, a test harness, a script.
-Always go through this API rather than a path into `node_modules`; the package
+Always go through this API rather than a path into `node_modules`; the repo
 layout is free to change, the API is not.
 
 ```js
-import { BRANDS, listBrands, resolveMock } from '@srf-news/platform-mock'
+import { BRANDS, listBrands, resolveMock } from '00_srf-news-platform-mock'
 
 const mock = resolveMock('rts')
 // {
@@ -98,7 +99,7 @@ const mock = resolveMock('rts')
 ```
 
 Subpath exports, if you need a raw file:
-`@srf-news/platform-mock/mocks/rts/index.html`.
+`00_srf-news-platform-mock/mocks/rts/index.html`.
 
 ## Available mocks
 
@@ -113,7 +114,7 @@ Subpath exports, if you need a raw file:
 A fork's rendered interface language follows the mock's `lang` attribute — the
 same mechanism the CMS uses in production.
 
-`pnpm brands` prints what is in the package, with asset counts and generation
+`pnpm brands` prints what is in this repo, with asset counts and generation
 dates. `screenshots/<brand>.png` is a full-page reference render of each.
 
 ## Maintaining this repo
@@ -133,7 +134,7 @@ pnpm check                # lint + format + test
 
 Run it when a platform redesigns its article page, and commit the result — the
 mocks are build artefacts, but they are **committed** artefacts so that
-installing this package never needs a browser or a network.
+installing this repo as a dependency never needs a browser or a network.
 
 ```sh
 pnpm mock srf             # scrape, write mocks/srf/, screenshot

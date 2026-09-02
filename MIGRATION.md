@@ -136,15 +136,16 @@ rm -rf public/sandbox-assets
 `.gitignore` keeps `/index.html`, and `public/sandbox-assets` is no longer
 created at all — that line can stay as a harmless leftover or be removed.
 
-### 6. Optional: drop the exclude plugin
+### 6. Drop the exclude plugin
 
-`newsSrfSandboxExcludePlugin` deleted `dist/index.html` and
-`dist/sandbox-assets/` after every build. With `buildHtml: 'minimal'` (the
-default) the mock chrome never enters the build, so the plugin has nothing left
-to remove.
+`newsSrfSandboxExcludePlugin` deleted `dist/index.html` and the mock's asset
+directory from `dist/` after every build. Both are the plugin's job now: the
+mock chrome never enters the build, and with `buildHtml: 'none'` (the default)
+no entry document is emitted either, so `dist/` holds only the fork's bundle.
+Delete the plugin and its entry in `vite.config.js`.
 
-Keep it if something downstream relies on `dist/index.html` being absent —
-`vite build` still writes a small one, and the exclude plugin still removes it.
+If you do want a document in `dist/` — `vite preview`, or a static hand-off —
+ask for it explicitly with `buildHtml: 'minimal'`.
 
 ### 7. Verify
 

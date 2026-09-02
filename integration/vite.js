@@ -38,12 +38,16 @@ const BANNER_ID = 'srf-news-platform-mock:generated'
  * @property {string} [htmlPath]
  *   Where the entry HTML is materialised. Defaults to `<root>/index.html`,
  *   which is what Vite expects and what forks already gitignore.
- * @property {'minimal'|'mock'} [buildHtml]
- *   Entry HTML used by `vite build`. `'minimal'` (default) builds a bare
- *   mount-point document: forks strip the mock chrome from `dist/` anyway, and
- *   skipping it avoids Vite warning about every unresolvable `/mock-assets`
- *   URL. `'mock'` builds the full platform page — pair it with
- *   `assets: 'copy'` if you want a self-contained static preview.
+ * @property {'none'|'minimal'|'mock'} [buildHtml]
+ *   What `vite build` leaves in `dist/`. `'none'` (default) emits no entry
+ *   document at all: a fork deploys its bundle into a CMS article, so an
+ *   `index.html` in the build output is dead weight that has to be deleted
+ *   again before upload. Vite still needs an entry to build from, so the bare
+ *   mount-point document is written to the project root as usual — it is just
+ *   dropped from the output. `'minimal'` keeps that bare document in `dist/`
+ *   (use it if you want `vite preview` to work). `'mock'` builds the full
+ *   platform page — pair it with `assets: 'copy'` for a self-contained static
+ *   preview.
  * @property {'serve'|'copy'} [assets]
  *   `'serve'` (default) streams the assets straight out of node_modules via
  *   dev middleware — nothing lands in the fork's working tree. `'copy'`
@@ -64,17 +68,18 @@ export default function platformMock(options = {}) {
     mountId = null,
     title = null,
     htmlPath = null,
-    buildHtml = 'minimal',
+    buildHtml = 'none',
     assets = 'serve',
     verbose = true,
   } = options
 
-  assertOneOf('buildHtml', buildHtml, ['minimal', 'mock'])
+  assertOneOf('buildHtml', buildHtml, ['none', 'minimal', 'mock'])
   assertOneOf('assets', assets, ['serve', 'copy'])
 
   /** @type {import('./index.js').Mock} */
   let mock
   let resolvedHtmlPath
+  let entryHtmlKey
   let command
 
   return {
@@ -87,6 +92,10 @@ export default function platformMock(options = {}) {
       resolvedHtmlPath = htmlPath
         ? path.resolve(config.root, htmlPath)
         : path.join(config.root, 'index.html')
+      entryHtmlKey = path
+        .relative(config.root, resolvedHtmlPath)
+        .split(path.sep)
+        .join('/')
 
       const useFullMock = command === 'serve' || buildHtml === 'mock'
       const html = useFullMock
@@ -102,6 +111,22 @@ export default function platformMock(options = {}) {
       if (assets === 'copy') {
         mirrorAssets(mock, path.join(config.publicDir, 'mock-assets'))
       }
+    },
+
+    // `order: 'post'` so this runs after Vite's own HTML plugin has emitted the
+    // document — dropping it here means it never reaches disk, so `dist/` needs
+    // no cleaning up afterwards.
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        if (buildHtml !== 'none') return
+
+        for (const [fileName, output] of Object.entries(bundle)) {
+          if (isEntryDocument(fileName, output, entryHtmlKey)) {
+            delete bundle[fileName]
+          }
+        }
+      },
     },
 
     configureServer(server) {
@@ -161,7 +186,7 @@ function transformMockHtml(html, { entry, mountId, title }) {
 /**
  * Bare entry document for `vite build`. Keeps exactly the parts the bundle
  * needs — language, title, mount point, entry module — and none of the
- * platform chrome, which forks delete from `dist/` regardless.
+ * platform chrome.
  */
 function buildMinimalHtml(mock, { entry, mountId, title }) {
   const id = mountId ?? '<%= id %>'
@@ -181,6 +206,17 @@ function buildMinimalHtml(mock, { entry, mountId, title }) {
   </body>
 </html>
 `
+}
+
+/**
+ * Recognises the entry document this plugin materialised in a Rollup bundle.
+ * Matches on the emitted file name, and falls back to the banner for an entry
+ * that Vite renamed or wrote outside the project root.
+ */
+function isEntryDocument(fileName, output, entryHtmlKey) {
+  if (output.type !== 'asset' || !fileName.endsWith('.html')) return false
+  if (fileName === entryHtmlKey) return true
+  return String(output.source).includes(BANNER_ID)
 }
 
 /** Stamps the generated file so it is obvious it must not be edited. */

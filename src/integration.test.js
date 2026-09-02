@@ -89,6 +89,52 @@ describe('platformMock vite plugin', () => {
     expect(html).not.toContain(`${ASSETS_URL}/merged.css`) // no platform chrome
   })
 
+  /** Stand-in for the bundle Vite hands to `generateBundle`. */
+  const fakeBundle = () => ({
+    'index.html': {
+      type: 'asset',
+      source: fs.readFileSync(path.join(root, 'index.html'), 'utf8'),
+    },
+    'index.js': { type: 'chunk', code: '// bundle' },
+    'other.html': { type: 'asset', source: '<h1>a fork of our own</h1>' },
+  })
+
+  it('drops the entry document from the build output by default', () => {
+    const plugin = platformMock({ brand: 'srf' })
+    plugin.configResolved(fakeConfig('build'))
+
+    const bundle = fakeBundle()
+    plugin.generateBundle.handler({}, bundle)
+
+    // Gone before it ever reaches dist/ — and only ours.
+    expect(Object.keys(bundle)).toEqual(['index.js', 'other.html'])
+  })
+
+  it('keeps the entry document in the build output on request', () => {
+    const plugin = platformMock({ brand: 'srf', buildHtml: 'minimal' })
+    plugin.configResolved(fakeConfig('build'))
+
+    const bundle = fakeBundle()
+    plugin.generateBundle.handler({}, bundle)
+
+    expect(Object.keys(bundle)).toContain('index.html')
+  })
+
+  it('drops a renamed entry document by its banner', () => {
+    const plugin = platformMock({ brand: 'srf' })
+    plugin.configResolved(fakeConfig('build'))
+
+    const bundle = {
+      'nested/entry.html': {
+        type: 'asset',
+        source: fs.readFileSync(path.join(root, 'index.html'), 'utf8'),
+      },
+    }
+    plugin.generateBundle.handler({}, bundle)
+
+    expect(bundle).toEqual({})
+  })
+
   it('keeps the full mock on build when asked to', () => {
     platformMock({ brand: 'srf', buildHtml: 'mock' }) //
       .configResolved(fakeConfig('build'))

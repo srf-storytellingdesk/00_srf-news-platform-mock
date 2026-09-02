@@ -76,15 +76,19 @@ that mock was scraped, so a glance at the startup line confirms the bump landed.
 
 ### What the plugin does
 
-|                   | dev (`vite`)                                     | build (`vite build`)        |
-| ----------------- | ------------------------------------------------ | --------------------------- |
-| `index.html`      | the full mock, written to the project root       | a bare mount-point document |
-| `/mock-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                 |
+|                   | dev (`vite`)                                     | build (`vite build`)                  |
+| ----------------- | ------------------------------------------------ | ------------------------------------- |
+| `index.html`      | the full mock, written to the project root       | a bare entry, written but not emitted |
+| `/mock-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                           |
 
-The build entry is deliberately minimal: forks strip the mock chrome from
-`dist/` anyway, so building it would only cost time and produce a warning for
-every asset URL Vite cannot resolve. Pass `buildHtml: 'mock'` if you want the
-full page in the build output.
+`dist/` therefore holds nothing but the fork's own bundle. Vite needs an entry
+document to build from, so the plugin still writes the bare mount-point version
+to the project root — it just drops it from the output again, before it reaches
+disk. That is what a fork wants: the bundle is embedded into a CMS article, and
+an `index.html` in the build output only has to be deleted again before upload.
+
+Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
+`vite preview` needs), or `buildHtml: 'mock'` for the full platform page.
 
 ### Plugin options
 
@@ -95,7 +99,7 @@ full page in the build output.
 | `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                         |
 | `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                 |
 | `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                           |
-| `buildHtml` | `'minimal'`         | `'minimal'` \| `'mock'` — see the table above.                                                                                                                 |
+| `buildHtml` | `'none'`            | `'none'` \| `'minimal'` \| `'mock'` — what ends up in `dist/`, see the table above.                                                                            |
 | `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
 | `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
 

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: pnpm
+
+      # Puppeteer is only needed to regenerate mocks, not to lint or test them.
+      - run: pnpm install --frozen-lockfile
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+      - run: pnpm run lint
+      - run: pnpm run format:check
+      - run: pnpm run test
+
+  # Fails the build if a mock was hand-edited instead of regenerated.
+  mocks-intact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for brand in srf rts rsi rtr swi; do
+            test -f "mocks/$brand/index.html"      || { echo "missing mocks/$brand/index.html"; exit 1; }
+            test -f "mocks/$brand/mock.json"       || { echo "missing mocks/$brand/mock.json"; exit 1; }
+            test -d "mocks/$brand/sandbox-assets"  || { echo "missing mocks/$brand/sandbox-assets"; exit 1; }
+          done
+          echo "All five brand mocks present."

@@ -1,0 +1,75 @@
+{
+  "name": "@srf-news/platform-mock",
+  "version": "1.0.0",
+  "description": "Offline mocks of SRG SSR article pages (SRF, RTS, RSI, RTR, SWI) plus the Vite integration that serves them to 00_srf-news-template forks.",
+  "keywords": [
+    "srf",
+    "srg",
+    "vite-plugin",
+    "mock",
+    "sandbox"
+  ],
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.28.1",
+  "bin": {
+    "platform-mock": "./src/cli.js"
+  },
+  "exports": {
+    ".": "./integration/index.js",
+    "./vite": "./integration/vite.js",
+    "./mocks/*": "./mocks/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "integration",
+    "mocks",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "mock": "node src/cli.js generate",
+    "mock:all": "node src/cli.js generate all",
+    "screenshot": "node src/cli.js screenshot",
+    "brands": "node src/cli.js list",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1",
+    "puppeteer": "^24.37.2",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "vite": "^8.0.8",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "puppeteer"
+    ]
+  }
+}

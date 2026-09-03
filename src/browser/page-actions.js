@@ -30,28 +30,26 @@ export function removeSelectors(selectors) {
 }
 
 /**
- * Swaps real editorial copy for placeholder text and splices the template's
- * mount points into the article body.
+ * Applies the brand config's DOM edits: splices the template's mount points in
+ * and swaps real editorial copy for placeholder text.
  *
- * @param {object} edits
- * @param {[string, string][]} edits.replacements `[selector, text]` — replaces
- *   the element's whole text content.
- * @param {[string, string][]} edits.inserts `[selector, text]` — appends the
- *   text; a leading `^` on the selector prepends instead.
+ * @param {{selector: string, mode: 'replace'|'append'|'prepend', text: string}[]} edits
  */
-export function applyTextEdits({ replacements, inserts }) {
-  for (const [selector, text] of replacements) {
-    const el = document.querySelector(selector)
-    if (el) el.textContent = text
-  }
-  for (const [rawSelector, text] of inserts) {
-    const prepend = rawSelector.startsWith('^')
-    const selector = prepend ? rawSelector.slice(1) : rawSelector
-    const el = document.querySelector(selector)
-    if (!el) continue
-    const node = document.createTextNode(text)
-    if (prepend) el.prepend(node)
-    else el.append(node)
+export function applyDomEdits(edits) {
+  const isReplace = (edit) => edit.mode === 'replace'
+
+  // Replacements run first, so a replacement on an ancestor can never wipe an
+  // insert already made into it.
+  const passes = [edits.filter(isReplace), edits.filter((e) => !isReplace(e))]
+
+  for (const pass of passes) {
+    for (const { selector, mode, text } of pass) {
+      const el = document.querySelector(selector)
+      if (!el) continue
+      if (mode === 'replace') el.textContent = text
+      else if (mode === 'prepend') el.prepend(document.createTextNode(text))
+      else el.append(document.createTextNode(text))
+    }
   }
 }
 

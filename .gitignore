@@ -1,0 +1,14 @@
+node_modules
+dist
+.eslintcache
+
+# Materialised by the Vite integration on every dev/build run — never edit or commit.
+/index.html
+
+# OS / editor
+.DS_Store
+*.log
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea

@@ -1,0 +1,81 @@
+<!-- ANKER FÜR TEMPLATE -->
+<div class="c-article-body_item" breakbeforeprint>
+  <div>
+    <div id="<%= id %>"></div>
+    <script type="module" src="/src/index.jsx"></script>
+    <!-- loading screen -->
+    <dialog data-news-landmark="news-loading-screen">
+      <div class="news-loading-screen-spinner"></div>
+      <p class="news-loading-screen-text">Artikel wird geladen...</p>
+    </dialog>
+    <style>
+      html:has([data-news-landmark="news-loading-screen"]) {
+        overflow-y: hidden;
+        touch-action: none;
+      }
+
+      [data-news-landmark="news-loading-screen"] {
+        --line-width: 1px;
+        --fade-in-duration: 1s;
+        --fade-in-delay: 1s;
+        --spinner-size: 36px;
+        position: fixed;
+        top: 0;
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: var(--t-body-bg);
+        z-index: 1;
+        border: unset;
+      }
+
+      .news-loading-screen-text {
+        font-size: 18px;
+        opacity: 0;
+        animation: fadeInSpinner var(--fade-in-duration) var(--fade-in-delay)
+          ease forwards;
+        color: var(--t-articlepage-article-content);
+      }
+
+      .news-loading-screen-spinner {
+        display: inline-block;
+        width: var(--spinner-size);
+        height: var(--spinner-size);
+        position: relative;
+        opacity: 0;
+        animation: fadeInSpinner var(--fade-in-duration) var(--fade-in-delay)
+          ease forwards;
+
+        &::before {
+          content: "";
+          display: block;
+          width: 100%;
+          height: 100%;
+          animation: spinnerRotate 1s linear infinite;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' viewBox='0 0 50 50'><circle cx='25' cy='25' r='20' fill='none' stroke='white' stroke-width='4' stroke-dasharray='30 150' stroke-dashoffset='0' /></svg>")
+            center/contain no-repeat;
+          background-color: #e31f2b;
+
+          @media (prefers-color-scheme: dark) {
+            background-color: #ff6669;
+          }
+        }
+      }
+
+      @keyframes spinnerRotate {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes fadeInSpinner {
+        100% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </div>
+</div>

@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+
+# Generated artefacts — rewritten by `pnpm mock`, must not be reformatted.
+/mocks
+/screenshots
+/index.html
+
+/node_modules
+/dist

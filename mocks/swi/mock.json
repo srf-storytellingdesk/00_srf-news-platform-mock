@@ -2,6 +2,7 @@
   "brand": "swi",
   "label": "SWI swissinfo.ch",
   "lang": "en",
+  "entryPointSelector": "main article .article-main",
   "sourceUrl": "https://www.swissinfo.ch/eng/global-trade/swiss-group-supports-gulf-oil-and-gas-repairs/91632308",
   "assetsUrl": "/mock-assets",
   "assetCount": 24,

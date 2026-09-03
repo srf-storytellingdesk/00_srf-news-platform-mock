@@ -33,6 +33,7 @@ const BRANDS_DIR = new URL('./brands/', import.meta.url)
 const PARTIALS_DIR = new URL('./partials/', import.meta.url)
 
 const CSS_FILE_NAME = 'merged.css'
+const ARTICLE_CONTENT_PLACEHOLDER = '{{ARTICLE_CONTENT}}'
 const TIME_TO_WAIT_FOR_DYNAMIC_CONTENT = 5000
 const TIME_TO_WAIT_AFTER_SCROLL = 5000
 
@@ -174,10 +175,19 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
 }
 
 async function writeManifest(outDir, brand, config, assetsDir) {
+  const entryPointSelector = findEntryPointSelector(config)
+  if (!entryPointSelector) {
+    console.warn(
+      `  ! No ${ARTICLE_CONTENT_PLACEHOLDER} selector in the brand config — ` +
+        'mock.json gets no entryPointSelector',
+    )
+  }
+
   const manifest = {
     brand,
     label: config.label ?? brand.toUpperCase(),
     lang: config.lang ?? 'de',
+    entryPointSelector,
     sourceUrl: config.fetchUrl,
     assetsUrl: `/${ASSETS_DIRNAME}`,
     assetCount: await countFiles(assetsDir),
@@ -188,6 +198,24 @@ async function writeManifest(outDir, brand, config, assetsDir) {
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
   console.log(`  ✓ mock.json (${manifest.assetCount} assets)`)
   return manifest
+}
+
+/**
+ * Selector of the element a template fork mounts its article into: whichever
+ * one the brand config points `{{ARTICLE_CONTENT}}` at. Baked into `mock.json`
+ * so a consumer never has to re-derive it from the generator's brand configs.
+ * @param {import('./brands/_shared.js').BrandConfig} config
+ * @returns {string|undefined}
+ */
+function findEntryPointSelector(config) {
+  const entry = [
+    ...Object.entries(config.textReplacements ?? {}),
+    ...Object.entries(config.insertSelectors ?? {}),
+  ].find(([, text]) => text === ARTICLE_CONTENT_PLACEHOLDER)
+
+  // Drop the `^` an insert selector uses to mean "prepend" — not part of the
+  // selector itself.
+  return entry?.[0].replace(/^\^/, '')
 }
 
 async function loadBrandConfig(brand) {

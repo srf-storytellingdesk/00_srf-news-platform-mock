@@ -103,6 +103,22 @@ Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
 | `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
 | `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
 
+### Injected constants
+
+The plugin contributes three compile-time constants through Vite's `define`, so
+a fork can branch on the mocked platform without restating what this package
+already knows:
+
+| Constant               | Example                                    | Meaning                                                |
+| ---------------------- | ------------------------------------------ | ------------------------------------------------------ |
+| `__MOCK_PLATFORM__`    | `'srf'`                                    | Brand key the plugin was configured with.              |
+| `__MOCK_LANG__`        | `'de'`                                     | The mock's `<html lang>`.                              |
+| `__MOCK_ENTRY_POINT__` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
+
+The last one is the useful one: a fork that inserts its own elements into the
+article body — dev-only portal containers, say — can query for the mount point
+instead of keeping a copy of every brand's selector next to its own code.
+
 ### Node API
 
 For anything that is not Vite — a Storybook config, a test harness, a script.
@@ -220,7 +236,7 @@ src/                    Generator — build-time only, never imported by a fork
 mocks/<brand>/          Generated, committed
   index.html            the frozen page
   mock-assets/          CSS, fonts, images it references
-  mock.json             brand, lang, source URL, asset count, date
+  mock.json             brand, lang, entry point selector, source URL, assets, date
 
 preview/                Local dev harness (stands in for a fork's entry)
 screenshots/            Reference renders
@@ -234,9 +250,10 @@ screenshots/            Reference renders
    `mocks/<brand>/mock-assets/`.
 3. `deleteSelectors` strips scripts, consent tooling and anything else that
    needs a live backend.
-4. `textReplacements` and `insertSelectors` replace the editorial copy with
-   placeholders and splice in the partials — the template mount point
-   (`{{ARTICLE_CONTENT}}`) and the top-media slot (`{{TOP_MEDIA_ELEMENT}}`).
+4. `mounts` splices the partials into the page — the `article` mount a template
+   fork renders into, and the optional `topMedia` slot — and `textReplacements`
+   swaps the editorial copy for placeholders. `mounts.article.selector` is what
+   `mock.json` records as `entryPointSelector`.
 5. All stylesheets are merged into one `merged.css`, asset URLs are rewritten to
    the `/mock-assets/` prefix, and referenced fonts are fetched.
 6. The HTML is formatted with Prettier and written together with `mock.json`.
@@ -249,7 +266,7 @@ No editorial text survives step 4 — the mocks carry chrome and layout only.
    `lang` and the selectors.
 2. Add the key to `BRANDS` in [integration/index.js](integration/index.js).
 3. If the platform's article markup differs, add a partial in `src/partials/`
-   and point `embedTemplate` at it.
+   and point `mounts.article.template` at it.
 4. `pnpm mock <key>`, check the screenshot, commit.
 
 ### The `/mock-assets` prefix

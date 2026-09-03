@@ -7,6 +7,9 @@
  *   export default defineConfig({
  *     plugins: [platformMock({ brand: 'srf' }), react()],
  *   })
+ *
+ * Besides materialising the entry HTML, the plugin injects the brand's
+ * identity into the bundle as compile-time constants — see DEFINES below.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -18,6 +21,31 @@ const PLUGIN_NAME = 'srf-news-platform-mock'
 
 /** Marker that identifies an `index.html` this plugin owns. */
 const BANNER_ID = 'srf-news-platform-mock:generated'
+
+/**
+ * Compile-time constants the plugin injects via Vite's `define`. They let a
+ * fork branch on the mocked platform without duplicating what this package
+ * already knows — most importantly the article mount point, which would
+ * otherwise have to be kept in sync with `src/brands/*.js` by hand.
+ *
+ * Declare them in the fork's ambient types:
+ *
+ *   declare const __MOCK_PLATFORM__: 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'
+ *   declare const __MOCK_LANG__: string
+ *   declare const __MOCK_ENTRY_POINT__: string | null
+ *
+ * `__MOCK_ENTRY_POINT__` is `null` for a mock generated before the selector
+ * was recorded, so consumers must handle that.
+ */
+function mockDefines(mock) {
+  return {
+    __MOCK_PLATFORM__: JSON.stringify(mock.brand),
+    __MOCK_LANG__: JSON.stringify(mock.lang),
+    __MOCK_ENTRY_POINT__: JSON.stringify(
+      mock.manifest.entryPointSelector ?? null,
+    ),
+  }
+}
 
 /**
  * @typedef {object} PlatformMockOptions
@@ -86,9 +114,17 @@ export default function platformMock(options = {}) {
     name: PLUGIN_NAME,
     enforce: 'pre',
 
+    // Runs before `configResolved`, which is the only window in which `define`
+    // can still be contributed. A `define` in the fork's own config wins over
+    // this one, so a fork can always override a value.
+    config() {
+      mock = resolveMock(brand)
+      return { define: mockDefines(mock) }
+    },
+
     configResolved(config) {
       command = config.command
-      mock = resolveMock(brand)
+      mock ??= resolveMock(brand)
       resolvedHtmlPath = htmlPath
         ? path.resolve(config.root, htmlPath)
         : path.join(config.root, 'index.html')

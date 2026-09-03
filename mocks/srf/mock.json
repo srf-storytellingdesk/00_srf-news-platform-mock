@@ -2,6 +2,7 @@
   "brand": "srf",
   "label": "SRF",
   "lang": "de",
+  "entryPointSelector": "[data-news-landmark=\"article-content\"]",
   "sourceUrl": "https://www.srf.ch/news/dialog/fehlende-berichterstattung-humanitaere-krisen-ohne-aufmerksamkeit",
   "assetsUrl": "/mock-assets",
   "assetCount": 54,

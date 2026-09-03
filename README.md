@@ -119,17 +119,6 @@ The last one is the useful one: a fork that inserts its own elements into the
 article body — dev-only portal containers, say — can query for the mount point
 instead of keeping a copy of every brand's selector next to its own code.
 
-```ts
-// ambient types in the fork
-declare const __MOCK_PLATFORM__: 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'
-declare const __MOCK_LANG__: string
-declare const __MOCK_ENTRY_POINT__: string | null
-```
-
-`__MOCK_ENTRY_POINT__` is `null` when the mock predates the selector being
-recorded in `mock.json`, so handle that case. A `define` in the fork's own Vite
-config takes precedence, which is the escape hatch if a value has to be forced.
-
 ### Node API
 
 For anything that is not Vite — a Storybook config, a test harness, a script.
@@ -146,7 +135,7 @@ const mock = resolveMock('rts')
 //   htmlPath:  '…/mocks/rts/index.html',
 //   assetsDir: '…/mocks/rts/mock-assets',
 //   assetsUrl: '/mock-assets',
-//   manifest:  { …mock.json… },   // incl. entryPointSelector, the mount point
+//   manifest:  { …mock.json… },
 // }
 ```
 
@@ -266,9 +255,7 @@ screenshots/            Reference renders
    (`{{ARTICLE_CONTENT}}`) and the top-media slot (`{{TOP_MEDIA_ELEMENT}}`).
 5. All stylesheets are merged into one `merged.css`, asset URLs are rewritten to
    the `/mock-assets/` prefix, and referenced fonts are fetched.
-6. The HTML is formatted with Prettier and written together with `mock.json`,
-   which records the mount point's selector as `entryPointSelector` so a fork
-   can find it without knowing the brand configs.
+6. The HTML is formatted with Prettier and written together with `mock.json`.
 
 No editorial text survives step 4 — the mocks carry chrome and layout only.
 

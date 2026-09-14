@@ -8,13 +8,21 @@
  *     plugins: [platformMock({ brand: 'srf' }), react()],
  *   })
  *
- * Besides materialising the entry HTML, the plugin injects the brand's
- * identity into the bundle as compile-time constants — see DEFINES below.
+ * Besides materialising the entry HTML, the plugin hands the brand's identity
+ * to the bundle two ways — as the `__MOCK_*` compile-time constants, and as
+ * the values behind `useMockVariables()`. Both come from the catalogue in
+ * `mock-variables.js`; see "Variables" below.
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { resolveMock } from './index.js'
+import {
+  mockDefines,
+  mockVariables,
+  runtimeValuesSource,
+} from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
 const PLUGIN_NAME = 'srf-news-platform-mock'
@@ -22,30 +30,46 @@ const PLUGIN_NAME = 'srf-news-platform-mock'
 /** Marker that identifies an `index.html` this plugin owns. */
 const BANNER_ID = 'srf-news-platform-mock:generated'
 
-/**
- * Compile-time constants the plugin injects via Vite's `define`. They let a
- * fork branch on the mocked platform without duplicating what this package
- * already knows — most importantly the article mount point, which would
- * otherwise have to be kept in sync with `src/brands/*.js` by hand.
+/** Package name, as a fork imports it. */
+const PACKAGE_NAME = '00_srf-news-platform-mock'
+
+/*
+ * Variables
+ * ---------
+ * The mock's identity reaches a fork's browser code through two channels, and
+ * they are not interchangeable:
  *
- * Declare them in the fork's ambient types:
+ *   __MOCK_PLATFORM__ & co.  Vite `define`. Folded at compile time, which is
+ *                            what makes `if (__MOCK_PLATFORM__ === 'srf')`
+ *                            disappear from a production build — but only in
+ *                            the fork's own sources. Vite deliberately does
+ *                            not apply `define` to files under node_modules in
+ *                            dev, so this package cannot read its own defines.
  *
- *   declare const __MOCK_PLATFORM__: 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'
- *   declare const __MOCK_LANG__: string
- *   declare const __MOCK_ENTRY_POINT__: string | null
+ *   useMockVariables()       An importable hook. The plugin swaps the module
+ *                            behind it for generated literals (RUNTIME_*
+ *                            below), which is the only channel that works from
+ *                            inside node_modules — and the only one that still
+ *                            answers, with every variable `null`, in a build
+ *                            this plugin is not part of.
  *
- * `__MOCK_ENTRY_POINT__` is `null` for a mock generated before the selector
- * was recorded, so consumers must handle that.
+ * Both are generated from the same catalogue, so they cannot drift apart.
  */
-function mockDefines(mock) {
-  return {
-    __MOCK_PLATFORM__: JSON.stringify(mock.brand),
-    __MOCK_LANG__: JSON.stringify(mock.lang),
-    __MOCK_ENTRY_POINT__: JSON.stringify(
-      mock.manifest.entryPointSelector ?? null,
-    ),
-  }
-}
+
+/** The fallback module the generated values stand in for. */
+const RUNTIME_VALUES_PATH = fileURLToPath(
+  new URL('./runtime/values.js', import.meta.url),
+)
+
+/** Rollup id of the generated replacement. `\0` keeps other plugins off it. */
+const RUNTIME_VALUES_ID = '\0platform-mock:values'
+
+/**
+ * Entry points that must not be pre-bundled: Vite would inline `values.js`
+ * into an optimized chunk before `resolveId` ever sees it, and the fork would
+ * silently get the inert fallback.
+ */
+const NO_PREBUNDLE = [PACKAGE_NAME, `${PACKAGE_NAME}/react`]
 
 /**
  * @typedef {object} PlatformMockOptions
@@ -106,6 +130,8 @@ export default function platformMock(options = {}) {
 
   /** @type {import('./index.js').Mock} */
   let mock
+  /** @type {Record<string, unknown>} */
+  let variables
   let resolvedHtmlPath
   let entryHtmlKey
   let command
@@ -119,12 +145,34 @@ export default function platformMock(options = {}) {
     // this one, so a fork can always override a value.
     config() {
       mock = resolveMock(brand)
-      return { define: mockDefines(mock) }
+      variables = mockVariables(mock)
+      return {
+        define: mockDefines(variables),
+        optimizeDeps: { exclude: NO_PREBUNDLE },
+      }
+    },
+
+    // Hands the hook its literals, by catching `react.js`'s own import of
+    // `./values.js`.
+    resolveId(source, importer) {
+      if (!importer || !source.startsWith('.')) return null
+      const resolved = path.resolve(
+        path.dirname(stripQuery(importer)),
+        stripQuery(source),
+      )
+      return resolved === RUNTIME_VALUES_PATH ? RUNTIME_VALUES_ID : null
+    },
+
+    load(id) {
+      if (id !== RUNTIME_VALUES_ID) return null
+      variables ??= mockVariables((mock ??= resolveMock(brand)))
+      return runtimeValuesSource(variables)
     },
 
     configResolved(config) {
       command = config.command
       mock ??= resolveMock(brand)
+      variables ??= mockVariables(mock)
       resolvedHtmlPath = htmlPath
         ? path.resolve(config.root, htmlPath)
         : path.join(config.root, 'index.html')
@@ -191,6 +239,12 @@ export default function platformMock(options = {}) {
       })
     },
   }
+}
+
+/** Drops the `?v=…` and `?import` suffixes Vite hangs off module ids in dev. */
+function stripQuery(id) {
+  const cut = id.indexOf('?')
+  return cut === -1 ? id : id.slice(0, cut)
 }
 
 /** URL prefixes the asset middleware is mounted on. */

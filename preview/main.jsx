@@ -8,10 +8,16 @@
 import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 
+import { useMockVariables } from '../integration/runtime/react.js'
+
 /** Must match `MOUNT_ID` in vite.config.js. */
 const MOUNT_ID = 'platform-mock-preview'
 
 const Placeholder = () => {
+  // Read the same way a fork reads them, so this harness is the first thing to
+  // break if the hook stops being handed the real values.
+  const { label, platform, lang } = useMockVariables()
+
   useEffect(() => {
     // The mock ships a loading screen that a real fork removes once it mounts.
     document.querySelector('[data-news-landmark=news-loading-screen]')?.remove()
@@ -23,6 +29,11 @@ const Placeholder = () => {
       <p>
         A template fork renders its article here. Everything around this box is
         the mocked platform chrome.
+      </p>
+      <p>
+        <code>
+          {label} ({platform}) · lang {lang}
+        </code>
       </p>
     </div>
   )

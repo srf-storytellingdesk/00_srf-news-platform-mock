@@ -103,22 +103,6 @@ Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
 | `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
 | `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
 
-### Injected constants
-
-The plugin contributes three compile-time constants through Vite's `define`, so
-a fork can branch on the mocked platform without restating what this package
-already knows:
-
-| Constant               | Example                                    | Meaning                                                |
-| ---------------------- | ------------------------------------------ | ------------------------------------------------------ |
-| `__MOCK_PLATFORM__`    | `'srf'`                                    | Brand key the plugin was configured with.              |
-| `__MOCK_LANG__`        | `'de'`                                     | The mock's `<html lang>`.                              |
-| `__MOCK_ENTRY_POINT__` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
-
-The last one is the useful one: a fork that inserts its own elements into the
-article body — dev-only portal containers, say — can query for the mount point
-instead of keeping a copy of every brand's selector next to its own code.
-
 ### Node API
 
 For anything that is not Vite — a Storybook config, a test harness, a script.
@@ -141,6 +125,79 @@ const mock = resolveMock('rts')
 
 Subpath exports, if you need a raw file:
 `00_srf-news-platform-mock/mocks/rts/index.html`.
+
+## Mock variables
+
+What the plugin knows about the mock is available to the fork's own code, so a
+fork never keeps a second copy of a brand's entry-point selector next to its
+own. There is one list of these variables —
+[`integration/mock-variables.js`](integration/mock-variables.js) — and every way
+of reading them is generated from it: the hook, the `__MOCK_*` constants, the
+types. The table below is checked against that list by a test, so a variable
+cannot be added without landing here.
+
+Kept deliberately short. Anything a fork can read off the mock's own DOM stays
+out of it.
+
+| Variable     | Example                                    | Meaning                                                |
+| ------------ | ------------------------------------------ | ------------------------------------------------------ |
+| `platform`   | `'srf'`                                    | Brand key the plugin was configured with.              |
+| `label`      | `'SRF'`                                    | Human-readable platform name, for dev-only UI.         |
+| `lang`       | `'de'`                                     | The mock's `<html lang>`.                              |
+| `entryPoint` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
+
+### Reading them
+
+```jsx
+import { useMockVariables } from '00_srf-news-platform-mock/react'
+
+function Article() {
+  const { platform, label, entryPoint } = useMockVariables()
+  if (!platform) return <RealArticle /> // no mock: the production build
+
+  return <DevBadge label={label} target={document.querySelector(entryPoint)} />
+}
+```
+
+The hook answers in **every** build, including the fork's production bundle for
+the CMS, where there is no mock and every variable is `null`. That is the whole
+point of importing it rather than reading a global — there is no build in which
+the import is missing, so a fork branches on data instead of on whether a global
+happens to exist.
+
+`react` is an optional peer dependency; nothing else in the package imports the
+hook module.
+
+### Compile-time constants
+
+Three of the variables are _also_ contributed as Vite `define` constants, kept
+for the one thing an import cannot do — vanishing at compile time:
+
+| Constant               | Variable     |
+| ---------------------- | ------------ |
+| `__MOCK_PLATFORM__`    | `platform`   |
+| `__MOCK_LANG__`        | `lang`       |
+| `__MOCK_ENTRY_POINT__` | `entryPoint` |
+
+`if (__MOCK_PLATFORM__ === 'srf')` is folded away in a build, so the branch
+never ships. The catch: a `define` is a bare global, and it only exists in a
+build this plugin is part of — reading one in the fork's production build throws
+a `ReferenceError`. Use them only for code that is meant to disappear, and
+`useMockVariables()` for everything else.
+
+Vite deliberately does not apply `define` to files under `node_modules` in dev,
+which is why the hook is handed its values by the plugin instead
+(`resolveId`/`load` in [integration/vite.js](integration/vite.js)) rather than
+reading those constants itself.
+
+### Types
+
+A TypeScript fork gets the hook's signature from the package, and the ambient
+`__MOCK_*` declarations from one reference:
+
+```ts
+/// <reference types="00_srf-news-platform-mock/globals" />
+```
 
 ## Available mocks
 
@@ -222,7 +279,12 @@ a scrape is reviewed for a day or two before it goes out.
 integration/            Consumer-facing surface — the only supported API
   index.js              resolveMock(), listBrands(), BRANDS
   vite.js               the Vite plugin
+  mock-variables.js     the one list of mock variables — add one here
   static-middleware.js  serves a mock's assets in dev
+  globals.d.ts          ambient types for the `__MOCK_*` constants
+  runtime/              what a fork imports into its own bundle
+    react.js            useMockVariables()
+    values.js           inert fallback; the plugin swaps in the real values
 
 src/                    Generator — build-time only, never imported by a fork
   cli.js                `platform-mock` CLI

@@ -29,6 +29,12 @@ export default [
     },
   },
 
+  // The runtime a fork imports into its own bundle — browser, not Node.
+  {
+    files: ['integration/runtime/**/*.js'],
+    languageOptions: { globals: globals.browser },
+  },
+
   // Code that runs inside the browser page Puppeteer drives.
   {
     files: ['src/browser/**/*.js'],

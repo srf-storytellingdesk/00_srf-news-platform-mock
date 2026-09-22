@@ -2,7 +2,7 @@
  * Types for `00_srf-news-platform-mock/react`. Hand-written: the package is
  * plain JavaScript, and TypeScript does not read JSDoc out of node_modules.
  * Keep in sync with `react.js` — `src/mock-variables.test.js` checks that this
- * file mentions every variable in the catalogue and every exported hook.
+ * file mentions every variable in the catalogue.
  */
 
 export type MockPlatform = 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'

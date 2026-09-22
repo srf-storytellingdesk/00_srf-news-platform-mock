@@ -29,9 +29,9 @@ export default [
     },
   },
 
-  // The runtime a fork imports into its own bundle — browser, not Node.
+  // The hook a fork imports into its own bundle — browser, not Node.
   {
-    files: ['integration/runtime/**/*.js'],
+    files: ['integration/react.js'],
     languageOptions: { globals: globals.browser },
   },
 

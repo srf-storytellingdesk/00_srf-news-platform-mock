@@ -1,103 +1,80 @@
 /**
- * The catalogue of everything this package tells a fork about the mock it is
- * running against — one list, in one file, that drives all of it:
+ * What this package tells a fork about the mock it is running against.
  *
- *   - the values behind `useMockVariables()`, baked in by the Vite plugin,
- *   - the `__MOCK_*` compile-time constants contributed through Vite's
- *     `define`,
- *   - the table in the README (a test asserts it still lists every variable).
+ * One list, and two functions around it: the plugin writes the variables into
+ * the page it generates, and `integration/react.js` reads them back out. There
+ * is no bundler magic involved — the values travel in the document, which is
+ * also the reason a fork's production build (a CMS page, not a generated mock)
+ * reports no mock at all.
  *
  * Add a variable here and nowhere else — and add one sparingly. This is a
- * surface a fork has to learn; anything it can derive from the mock's own DOM
+ * surface a fork has to learn; anything it can read off the mock's own DOM
  * does not belong in it.
  */
 
 /**
- * @typedef {object} MockVariableSpec
- * @property {string} key       Key in the variables object.
- * @property {string|null} define
- *   Name of the `define` constant carrying the same value, or `null` for a
- *   variable that is only exposed through the hook.
- * @property {string} describe  One line, reused verbatim in the README table.
- * @property {(mock: import('./index.js').Mock) => unknown} read
- *   Derives the value from a resolved mock.
+ * The element the variables travel in. A JSON block rather than attributes:
+ * nothing to escape, nothing executes, and it reads as itself in devtools.
  */
+export const MOCK_VARIABLES_SELECTOR = 'script[data-platform-mock]'
 
 /**
  * Every variable a fork can read, in the order they are documented.
- * @type {MockVariableSpec[]}
+ * @type {{key: string, describe: string, read: (mock: import('./index.js').Mock) => string|null}[]}
  */
 export const MOCK_VARIABLES = [
   {
     key: 'platform',
-    define: '__MOCK_PLATFORM__',
     describe: 'Brand key the plugin was configured with.',
     read: (mock) => mock.brand,
   },
   {
     key: 'label',
-    define: null,
     describe: 'Human-readable platform name, for dev-only UI.',
     read: (mock) => mock.manifest.label ?? mock.brand.toUpperCase(),
   },
   {
     key: 'lang',
-    define: '__MOCK_LANG__',
     describe: "The mock's `<html lang>`.",
     read: (mock) => mock.lang,
   },
   {
     key: 'entryPoint',
-    define: '__MOCK_ENTRY_POINT__',
     describe: 'Selector of the article mount point, from `mock.json`.',
     read: (mock) => mock.manifest.entryPointSelector ?? null,
   },
 ]
 
-/** Keys of the variables object. */
-export const MOCK_VARIABLE_KEYS = MOCK_VARIABLES.map((variable) => variable.key)
+/**
+ * What `useMockVariables()` answers when there is no mock in the page. Every
+ * key the plugin can write exists here, `null`, so a fork never has to guard
+ * against a missing one — a test keeps this in step with the list above.
+ */
+export const NO_MOCK_VARIABLES = Object.freeze({
+  platform: null,
+  label: null,
+  lang: null,
+  entryPoint: null,
+})
 
 /**
- * Resolves the variables for one mock — the exact shape `useMockVariables()`
- * returns in the browser.
+ * Resolves the variables for one mock — the exact object the hook returns.
  * @param {import('./index.js').Mock} mock
- * @returns {Record<string, unknown>}
+ * @returns {Record<string, string|null>}
  */
 export function mockVariables(mock) {
-  const variables = {}
-  for (const variable of MOCK_VARIABLES) {
-    variables[variable.key] = variable.read(mock)
-  }
-  return variables
-}
-
-/**
- * The subset exposed as Vite `define` constants. A `define` is a bare global
- * that throws a `ReferenceError` in any build the plugin is not part of, so
- * only the values worth folding at compile time have one. `label` does not:
- * it is dev-only UI copy, and there is nothing to fold.
- * @param {Record<string, unknown>} variables From {@link mockVariables}.
- * @returns {Record<string, string>}
- */
-export function mockDefines(variables) {
   return Object.fromEntries(
-    MOCK_VARIABLES.filter((variable) => variable.define).map((variable) => [
-      variable.define,
-      JSON.stringify(variables[variable.key] ?? null),
-    ]),
+    MOCK_VARIABLES.map((variable) => [variable.key, variable.read(mock)]),
   )
 }
 
 /**
- * Source of the module the plugin substitutes for `integration/runtime/
- * values.js`. Plain literals, so a bundler can fold and tree-shake branches on
- * them exactly as it would a `define`.
- * @param {Record<string, unknown>} variables From {@link mockVariables}.
+ * The JSON block to put in the generated document's `<head>`. Classic markup,
+ * so it is parsed long before the fork's deferred module script runs.
+ * @param {import('./index.js').Mock} mock
  * @returns {string}
  */
-export function runtimeValuesSource(variables) {
-  return (
-    `// Generated by the "srf-news-platform-mock" Vite plugin — not a file on disk.\n` +
-    `export const mockVariables = Object.freeze(${JSON.stringify(variables, null, 2)})\n`
-  )
+export function mockVariablesScript(mock) {
+  const json = JSON.stringify(mockVariables(mock))
+  return `<script type="application/json" data-platform-mock>${json}</script>`
 }

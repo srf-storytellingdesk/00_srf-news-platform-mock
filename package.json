@@ -22,11 +22,8 @@
     ".": "./integration/index.js",
     "./vite": "./integration/vite.js",
     "./react": {
-      "types": "./integration/runtime/react.d.ts",
-      "default": "./integration/runtime/react.js"
-    },
-    "./globals": {
-      "types": "./integration/globals.d.ts"
+      "types": "./integration/react.d.ts",
+      "default": "./integration/react.js"
     },
     "./mocks/*": "./mocks/*",
     "./package.json": "./package.json"
@@ -66,13 +63,9 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "react": ">=18",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
     "vite": {
       "optional": true
     }

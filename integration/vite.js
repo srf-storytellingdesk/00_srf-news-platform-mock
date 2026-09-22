@@ -8,68 +8,21 @@
  *     plugins: [platformMock({ brand: 'srf' }), react()],
  *   })
  *
- * Besides materialising the entry HTML, the plugin hands the brand's identity
- * to the bundle two ways — as the `__MOCK_*` compile-time constants, and as
- * the values behind `useMockVariables()`. Both come from the catalogue in
- * `mock-variables.js`; see "Variables" below.
+ * Besides materialising the entry HTML, the plugin writes the mock's identity
+ * into that HTML as a JSON block, which is what `useMockVariables()` reads —
+ * see `mock-variables.js`.
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { resolveMock } from './index.js'
-import {
-  mockDefines,
-  mockVariables,
-  runtimeValuesSource,
-} from './mock-variables.js'
+import { mockVariablesScript } from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
 const PLUGIN_NAME = 'srf-news-platform-mock'
 
 /** Marker that identifies an `index.html` this plugin owns. */
 const BANNER_ID = 'srf-news-platform-mock:generated'
-
-/** Package name, as a fork imports it. */
-const PACKAGE_NAME = '00_srf-news-platform-mock'
-
-/*
- * Variables
- * ---------
- * The mock's identity reaches a fork's browser code through two channels, and
- * they are not interchangeable:
- *
- *   __MOCK_PLATFORM__ & co.  Vite `define`. Folded at compile time, which is
- *                            what makes `if (__MOCK_PLATFORM__ === 'srf')`
- *                            disappear from a production build — but only in
- *                            the fork's own sources. Vite deliberately does
- *                            not apply `define` to files under node_modules in
- *                            dev, so this package cannot read its own defines.
- *
- *   useMockVariables()       An importable hook. The plugin swaps the module
- *                            behind it for generated literals (RUNTIME_*
- *                            below), which is the only channel that works from
- *                            inside node_modules — and the only one that still
- *                            answers, with every variable `null`, in a build
- *                            this plugin is not part of.
- *
- * Both are generated from the same catalogue, so they cannot drift apart.
- */
-
-/** The fallback module the generated values stand in for. */
-const RUNTIME_VALUES_PATH = fileURLToPath(
-  new URL('./runtime/values.js', import.meta.url),
-)
-
-/** Rollup id of the generated replacement. `\0` keeps other plugins off it. */
-const RUNTIME_VALUES_ID = '\0platform-mock:values'
-
-/**
- * Entry points that must not be pre-bundled: Vite would inline `values.js`
- * into an optimized chunk before `resolveId` ever sees it, and the fork would
- * silently get the inert fallback.
- */
-const NO_PREBUNDLE = [PACKAGE_NAME, `${PACKAGE_NAME}/react`]
 
 /**
  * @typedef {object} PlatformMockOptions
@@ -130,8 +83,6 @@ export default function platformMock(options = {}) {
 
   /** @type {import('./index.js').Mock} */
   let mock
-  /** @type {Record<string, unknown>} */
-  let variables
   let resolvedHtmlPath
   let entryHtmlKey
   let command
@@ -140,39 +91,9 @@ export default function platformMock(options = {}) {
     name: PLUGIN_NAME,
     enforce: 'pre',
 
-    // Runs before `configResolved`, which is the only window in which `define`
-    // can still be contributed. A `define` in the fork's own config wins over
-    // this one, so a fork can always override a value.
-    config() {
-      mock = resolveMock(brand)
-      variables = mockVariables(mock)
-      return {
-        define: mockDefines(variables),
-        optimizeDeps: { exclude: NO_PREBUNDLE },
-      }
-    },
-
-    // Hands the hook its literals, by catching `react.js`'s own import of
-    // `./values.js`.
-    resolveId(source, importer) {
-      if (!importer || !source.startsWith('.')) return null
-      const resolved = path.resolve(
-        path.dirname(stripQuery(importer)),
-        stripQuery(source),
-      )
-      return resolved === RUNTIME_VALUES_PATH ? RUNTIME_VALUES_ID : null
-    },
-
-    load(id) {
-      if (id !== RUNTIME_VALUES_ID) return null
-      variables ??= mockVariables((mock ??= resolveMock(brand)))
-      return runtimeValuesSource(variables)
-    },
-
     configResolved(config) {
       command = config.command
-      mock ??= resolveMock(brand)
-      variables ??= mockVariables(mock)
+      mock = resolveMock(brand)
       resolvedHtmlPath = htmlPath
         ? path.resolve(config.root, htmlPath)
         : path.join(config.root, 'index.html')
@@ -190,7 +111,7 @@ export default function platformMock(options = {}) {
           })
         : buildMinimalHtml(mock, { entry, mountId, title })
 
-      writeGeneratedFile(resolvedHtmlPath, withBanner(html, mock, command))
+      writeGeneratedFile(resolvedHtmlPath, stampGenerated(html, mock, command))
 
       if (assets === 'copy') {
         mirrorAssets(mock, path.join(config.publicDir, 'mock-assets'))
@@ -239,12 +160,6 @@ export default function platformMock(options = {}) {
       })
     },
   }
-}
-
-/** Drops the `?v=…` and `?import` suffixes Vite hangs off module ids in dev. */
-function stripQuery(id) {
-  const cut = id.indexOf('?')
-  return cut === -1 ? id : id.slice(0, cut)
 }
 
 /** URL prefixes the asset middleware is mounted on. */
@@ -309,8 +224,11 @@ function isEntryDocument(fileName, output, entryHtmlKey) {
   return String(output.source).includes(BANNER_ID)
 }
 
-/** Stamps the generated file so it is obvious it must not be edited. */
-function withBanner(html, mock, command) {
+/**
+ * Everything the plugin adds to a document it generates: the do-not-edit
+ * banner, and the variables block `useMockVariables()` reads back out.
+ */
+function stampGenerated(html, mock, command) {
   const banner =
     `<!-- ${BANNER_ID} -->\n` +
     `<!--\n` +
@@ -322,9 +240,27 @@ function withBanner(html, mock, command) {
 
   // After the doctype, so the document never starts with a comment.
   const doctype = html.match(/^\s*<!doctype html>/i)
-  return doctype
+  const stamped = doctype
     ? html.replace(doctype[0], `${doctype[0].trim()}\n${banner}`)
     : banner + html
+
+  return withMockVariables(stamped, mock)
+}
+
+/**
+ * Puts the variables block at the end of `<head>` — after the charset meta,
+ * which has to come first, and long before the fork's deferred module script
+ * runs.
+ */
+function withMockVariables(html, mock) {
+  if (!/<\/head>/i.test(html)) {
+    throw new Error(
+      `[platform-mock] No </head> in the ${mock.brand} mock — nowhere to write ` +
+        `the variables useMockVariables() reads. Regenerate it with ` +
+        `\`pnpm mock ${mock.brand}\`.`,
+    )
+  }
+  return html.replace(/<\/head>/i, `  ${mockVariablesScript(mock)}\n  </head>`)
 }
 
 /**

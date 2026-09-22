@@ -8,7 +8,7 @@
 import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { useMockVariables } from '../integration/runtime/react.js'
+import { useMockVariables } from '../integration/react.js'
 
 /** Must match `MOUNT_ID` in vite.config.js. */
 const MOUNT_ID = 'platform-mock-preview'

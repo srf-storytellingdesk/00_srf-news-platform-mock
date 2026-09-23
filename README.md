@@ -58,6 +58,8 @@ Add the generated entry file to the fork's `.gitignore`:
 ```gitignore
 # written by 00_srf-news-platform-mock on every dev/build run
 /index.html
+# the build's own entry — normally deleted again as the build ends
+/.platform-mock-entry.html
 ```
 
 ### Moving a fork to newer mocks
@@ -76,19 +78,28 @@ that mock was scraped, so a glance at the startup line confirms the bump landed.
 
 ### What the plugin does
 
-|                   | dev (`vite`)                                     | build (`vite build`)                  |
-| ----------------- | ------------------------------------------------ | ------------------------------------- |
-| `index.html`      | the full mock, written to the project root       | a bare entry, written but not emitted |
-| `/mock-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                           |
+|                             | dev (`vite`)                                     | build (`vite build`)                |
+| --------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `index.html`                | the full mock, written to the project root       | untouched                           |
+| `.platform-mock-entry.html` | —                                                | a bare entry, built but not emitted |
+| `/mock-assets/**`           | streamed out of `node_modules` by dev middleware | not emitted                         |
 
 `dist/` therefore holds nothing but the fork's own bundle. Vite needs an entry
-document to build from, so the plugin still writes the bare mount-point version
-to the project root — it just drops it from the output again, before it reaches
-disk. That is what a fork wants: the bundle is embedded into a CMS article, and
-an `index.html` in the build output only has to be deleted again before upload.
+document to build from, so the plugin writes the bare mount-point version and
+points `build.rollupOptions.input` at it — then drops it from the output again,
+before it reaches disk, and deletes the file once the bundle is written. That is
+what a fork wants: the bundle is embedded into a CMS article, and an
+`index.html` in the build output only has to be deleted again before upload.
+
+The build gets an entry file of its own so that it can run while `vite` is
+serving: a build that wrote the bare document over `index.html` would leave the
+dev server serving a page with no platform chrome and no mock variables until it
+was restarted. The two files sit in the same directory, so relative asset URLs
+resolve identically.
 
 Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
-`vite preview` needs), or `buildHtml: 'mock'` for the full platform page.
+`vite preview` needs, and it is emitted as `index.html` there), or
+`buildHtml: 'mock'` for the full platform page.
 
 ### Plugin options
 

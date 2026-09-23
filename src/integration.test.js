@@ -60,14 +60,30 @@ describe('platformMock vite plugin', () => {
   })
 
   /** Minimal stand-in for the `ResolvedConfig` Vite hands to `configResolved`. */
-  const fakeConfig = (command) => ({
+  const fakeConfig = (command, build = {}) => ({
     command,
     root,
     base: '/widgets/demo/',
     publicDir: path.join(root, 'public'),
+    build,
   })
 
-  const indexHtml = () => fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+  /** The document the build is pointed at — never the dev server's. */
+  const BUILD_ENTRY = '.platform-mock-entry.html'
+
+  const read = (...parts) => fs.readFileSync(path.join(root, ...parts), 'utf8')
+  const indexHtml = () => read('index.html')
+  const buildEntryHtml = () => read(BUILD_ENTRY)
+
+  /**
+   * Runs the two hooks a build goes through before Rollup starts, in order.
+   * @returns {import('vite').Plugin}
+   */
+  const startBuild = (plugin, userConfig = {}) => {
+    plugin.config({ root, ...userConfig }, { command: 'build' })
+    plugin.configResolved(fakeConfig('build', userConfig.build))
+    return plugin
+  }
 
   it('materialises the full mock as the dev entry', () => {
     platformMock({ brand: 'srf' }).configResolved(fakeConfig('serve'))
@@ -81,65 +97,148 @@ describe('platformMock vite plugin', () => {
   })
 
   it('materialises a bare mount document for the build entry', () => {
-    platformMock({ brand: 'rts' }).configResolved(fakeConfig('build'))
+    startBuild(platformMock({ brand: 'rts' }))
 
-    const html = indexHtml()
+    const html = buildEntryHtml()
     expect(html).toContain('<html lang="fr">')
     expect(html).toContain('<script type="module" src="/src/index.jsx">')
     expect(html).not.toContain(`${ASSETS_URL}/merged.css`) // no platform chrome
   })
 
+  it('points the build at its own entry, not at the dev one', () => {
+    const plugin = platformMock({ brand: 'srf' })
+    const patch = plugin.config({ root }, { command: 'build' })
+
+    // Named input: the entry chunk is named after it, and nobody wants to
+    // upload `.platform-mock-entry-<hash>.js`.
+    expect(patch.build.rollupOptions.input).toEqual({
+      index: path.join(root, BUILD_ENTRY),
+    })
+  })
+
+  it("leaves a running dev server's entry document alone", () => {
+    // The regression this guards: a build used to overwrite the dev entry with
+    // the bare document, and the dev server then served a chrome-less page
+    // until it was restarted.
+    platformMock({ brand: 'srf' }).configResolved(fakeConfig('serve'))
+    const served = indexHtml()
+
+    startBuild(platformMock({ brand: 'srf' }))
+
+    expect(indexHtml()).toBe(served)
+    expect(buildEntryHtml()).not.toContain(`${ASSETS_URL}/merged.css`)
+  })
+
+  it('removes the build entry once the bundle is written', () => {
+    const plugin = startBuild(platformMock({ brand: 'srf' }))
+    expect(fs.existsSync(path.join(root, BUILD_ENTRY))).toBe(true)
+
+    plugin.closeBundle()
+    expect(fs.existsSync(path.join(root, BUILD_ENTRY))).toBe(false)
+  })
+
+  it('keeps the build entry in watch mode, where it is re-read', () => {
+    const plugin = startBuild(platformMock({ brand: 'srf' }), {
+      build: { watch: {} },
+    })
+
+    plugin.closeBundle()
+    expect(fs.existsSync(path.join(root, BUILD_ENTRY))).toBe(true)
+  })
+
+  it('clears a build entry a killed build left behind', () => {
+    startBuild(platformMock({ brand: 'srf' })) // never closes its bundle
+
+    platformMock({ brand: 'srf' }).configResolved(fakeConfig('serve'))
+    expect(fs.existsSync(path.join(root, BUILD_ENTRY))).toBe(false)
+  })
+
+  it('redirects a fork input that names the entry document', () => {
+    const plugin = platformMock({ brand: 'srf' })
+    const patch = plugin.config(
+      { root, build: { rollupOptions: { input: { app: 'index.html' } } } },
+      { command: 'build' },
+    )
+
+    expect(patch.build.rollupOptions.input).toEqual({
+      app: path.join(root, BUILD_ENTRY),
+    })
+  })
+
+  it('keeps out of a build that does not use the entry document', () => {
+    const plugin = platformMock({ brand: 'srf' })
+    const userConfig = {
+      root,
+      build: { rollupOptions: { input: path.join(root, 'admin.html') } },
+    }
+
+    expect(plugin.config(userConfig, { command: 'build' })).toBeUndefined()
+
+    plugin.configResolved(fakeConfig('build', userConfig.build))
+    expect(fs.readdirSync(root)).toEqual([]) // wrote nothing at all
+  })
+
   /** Stand-in for the bundle Vite hands to `generateBundle`. */
   const fakeBundle = () => ({
-    'index.html': {
-      type: 'asset',
-      source: fs.readFileSync(path.join(root, 'index.html'), 'utf8'),
-    },
+    [BUILD_ENTRY]: { type: 'asset', source: buildEntryHtml() },
     'index.js': { type: 'chunk', code: '// bundle' },
     'other.html': { type: 'asset', source: '<h1>a fork of our own</h1>' },
   })
 
+  /**
+   * Stand-in for the Rollup plugin context. Rolldown ignores writes to the
+   * bundle object, so a re-emitted document arrives through `emitFile`.
+   */
+  const fakeContext = () => ({
+    emitted: [],
+    emitFile(file) {
+      this.emitted.push(file)
+    },
+  })
+
   it('drops the entry document from the build output by default', () => {
-    const plugin = platformMock({ brand: 'srf' })
-    plugin.configResolved(fakeConfig('build'))
+    const plugin = startBuild(platformMock({ brand: 'srf' }))
 
     const bundle = fakeBundle()
-    plugin.generateBundle.handler({}, bundle)
+    const context = fakeContext()
+    plugin.generateBundle.handler.call(context, {}, bundle)
 
     // Gone before it ever reaches dist/ — and only ours.
     expect(Object.keys(bundle)).toEqual(['index.js', 'other.html'])
+    expect(context.emitted).toEqual([])
   })
 
-  it('keeps the entry document in the build output on request', () => {
-    const plugin = platformMock({ brand: 'srf', buildHtml: 'minimal' })
-    plugin.configResolved(fakeConfig('build'))
+  it('emits the entry document under its configured name on request', () => {
+    const plugin = startBuild(
+      platformMock({ brand: 'srf', buildHtml: 'minimal' }),
+    )
 
     const bundle = fakeBundle()
-    plugin.generateBundle.handler({}, bundle)
+    const context = fakeContext()
+    plugin.generateBundle.handler.call(context, {}, bundle)
 
-    expect(Object.keys(bundle)).toContain('index.html')
+    // Built as `.platform-mock-entry.html`, shipped as `index.html`.
+    expect(Object.keys(bundle)).not.toContain(BUILD_ENTRY)
+    expect(context.emitted).toEqual([
+      { type: 'asset', fileName: 'index.html', source: buildEntryHtml() },
+    ])
   })
 
   it('drops a renamed entry document by its banner', () => {
-    const plugin = platformMock({ brand: 'srf' })
-    plugin.configResolved(fakeConfig('build'))
+    const plugin = startBuild(platformMock({ brand: 'srf' }))
 
     const bundle = {
-      'nested/entry.html': {
-        type: 'asset',
-        source: fs.readFileSync(path.join(root, 'index.html'), 'utf8'),
-      },
+      'nested/entry.html': { type: 'asset', source: buildEntryHtml() },
     }
-    plugin.generateBundle.handler({}, bundle)
+    plugin.generateBundle.handler.call(fakeContext(), {}, bundle)
 
     expect(bundle).toEqual({})
   })
 
   it('keeps the full mock on build when asked to', () => {
-    platformMock({ brand: 'srf', buildHtml: 'mock' }) //
-      .configResolved(fakeConfig('build'))
+    startBuild(platformMock({ brand: 'srf', buildHtml: 'mock' }))
 
-    expect(indexHtml()).toContain(`${ASSETS_URL}/merged.css`)
+    expect(buildEntryHtml()).toContain(`${ASSETS_URL}/merged.css`)
   })
 
   it('rewrites the entry module and fills the EJS placeholders', () => {
@@ -188,6 +287,14 @@ describe('platformMock vite plugin', () => {
 
     expect(fs.existsSync(path.join(root, 'mock/entry.html'))).toBe(true)
     expect(fs.existsSync(path.join(root, 'index.html'))).toBe(false)
+  })
+
+  it('puts the build entry next to a custom htmlPath', () => {
+    // Same directory, so relative asset URLs resolve the same either way.
+    startBuild(platformMock({ brand: 'srf', htmlPath: 'mock/entry.html' }))
+
+    expect(fs.existsSync(path.join(root, 'mock', BUILD_ENTRY))).toBe(true)
+    expect(fs.existsSync(path.join(root, 'mock/entry.html'))).toBe(false)
   })
 
   it('mirrors assets into publicDir in copy mode, once', () => {

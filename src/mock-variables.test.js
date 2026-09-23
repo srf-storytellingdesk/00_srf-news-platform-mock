@@ -140,8 +140,13 @@ describe('what the plugin writes', () => {
       root,
       base: '/',
       publicDir: path.join(root, 'public'),
+      build: {},
     })
-    return fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+    // A build writes its own entry document; the dev one stays put so a
+    // running dev server keeps serving the full mock.
+    const file =
+      command === 'build' ? '.platform-mock-entry.html' : 'index.html'
+    return fs.readFileSync(path.join(root, file), 'utf8')
   }
 
   it('puts the variables in the dev document, inside <head>', () => {

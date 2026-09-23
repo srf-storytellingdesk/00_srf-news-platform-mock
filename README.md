@@ -58,6 +58,8 @@ Add the generated entry file to the fork's `.gitignore`:
 ```gitignore
 # written by 00_srf-news-platform-mock on every dev/build run
 /index.html
+# the build's own entry — normally deleted again as the build ends
+/.platform-mock-entry.html
 ```
 
 ### Moving a fork to newer mocks
@@ -76,19 +78,28 @@ that mock was scraped, so a glance at the startup line confirms the bump landed.
 
 ### What the plugin does
 
-|                   | dev (`vite`)                                     | build (`vite build`)                  |
-| ----------------- | ------------------------------------------------ | ------------------------------------- |
-| `index.html`      | the full mock, written to the project root       | a bare entry, written but not emitted |
-| `/mock-assets/**` | streamed out of `node_modules` by dev middleware | not emitted                           |
+|                             | dev (`vite`)                                     | build (`vite build`)                |
+| --------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `index.html`                | the full mock, written to the project root       | untouched                           |
+| `.platform-mock-entry.html` | —                                                | a bare entry, built but not emitted |
+| `/mock-assets/**`           | streamed out of `node_modules` by dev middleware | not emitted                         |
 
 `dist/` therefore holds nothing but the fork's own bundle. Vite needs an entry
-document to build from, so the plugin still writes the bare mount-point version
-to the project root — it just drops it from the output again, before it reaches
-disk. That is what a fork wants: the bundle is embedded into a CMS article, and
-an `index.html` in the build output only has to be deleted again before upload.
+document to build from, so the plugin writes the bare mount-point version and
+points `build.rollupOptions.input` at it — then drops it from the output again,
+before it reaches disk, and deletes the file once the bundle is written. That is
+what a fork wants: the bundle is embedded into a CMS article, and an
+`index.html` in the build output only has to be deleted again before upload.
+
+The build gets an entry file of its own so that it can run while `vite` is
+serving: a build that wrote the bare document over `index.html` would leave the
+dev server serving a page with no platform chrome and no mock variables until it
+was restarted. The two files sit in the same directory, so relative asset URLs
+resolve identically.
 
 Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
-`vite preview` needs), or `buildHtml: 'mock'` for the full platform page.
+`vite preview` needs, and it is emitted as `index.html` there), or
+`buildHtml: 'mock'` for the full platform page.
 
 ### Plugin options
 
@@ -125,6 +136,58 @@ const mock = resolveMock('rts')
 
 Subpath exports, if you need a raw file:
 `00_srf-news-platform-mock/mocks/rts/index.html`.
+
+## Mock variables
+
+A fork can ask which platform its article is mounted in, and where, instead of
+keeping a copy of every brand's entry-point selector next to its own code:
+
+```jsx
+import { useMockVariables } from '00_srf-news-platform-mock/react'
+
+function DevTools() {
+  const { platform, label, entryPoint } = useMockVariables()
+  if (!platform) return null // no mock: this is the production build
+
+  return <Badge label={label} target={document.querySelector(entryPoint)} />
+}
+```
+
+| Variable     | Example                                    | Meaning                                                |
+| ------------ | ------------------------------------------ | ------------------------------------------------------ |
+| `platform`   | `'srf'`                                    | Brand key the plugin was configured with.              |
+| `label`      | `'SRF'`                                    | Human-readable platform name, for dev-only UI.         |
+| `lang`       | `'de'`                                     | The mock's `<html lang>`.                              |
+| `entryPoint` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
+
+Four variables, one hook, and it is meant to stay that way — anything a fork can
+read off the mock's own DOM does not belong in here.
+[`integration/mock-variables.js`](integration/mock-variables.js) is the list; a
+test fails if a variable is missing from the table above or from the types.
+
+### How the values get there
+
+The plugin writes them into the `<head>` of the document it already generates:
+
+```html
+<script type="application/json" data-platform-mock>
+  { "platform": "srf", "label": "SRF", "lang": "de", "entryPoint": "…" }
+</script>
+```
+
+and the hook reads that block back. Nothing is injected into the bundle, so
+there is no `define`, no bare globals, and nothing to declare in a fork's
+config. It also explains the one case that matters: the fork's production bundle
+runs in a real CMS page, which has no such block, so every variable is `null`
+there and the hook is safe to call unconditionally.
+
+The values are read at runtime, not folded in at compile time. Dev-only code
+behind `if (platform)` therefore still ships in the production bundle — for an
+article widget that is a few bytes, and it buys a surface with no build-mode
+footguns in it.
+
+TypeScript forks get the hook's types from the package; no reference directive
+or ambient declaration needed.
 
 ## Available mocks
 
@@ -206,6 +269,8 @@ a scrape is reviewed for a day or two before it goes out.
 integration/            Consumer-facing surface — the only supported API
   index.js              resolveMock(), listBrands(), BRANDS
   vite.js               the Vite plugin
+  mock-variables.js     the one list of mock variables — add one here
+  react.js              useMockVariables(), what a fork imports
   static-middleware.js  serves a mock's assets in dev
 
 src/                    Generator — build-time only, never imported by a fork
@@ -220,7 +285,7 @@ src/                    Generator — build-time only, never imported by a fork
 mocks/<brand>/          Generated, committed
   index.html            the frozen page
   mock-assets/          CSS, fonts, images it references
-  mock.json             brand, lang, source URL, asset count, date
+  mock.json             brand, lang, entry point selector, source URL, assets, date
 
 preview/                Local dev harness (stands in for a fork's entry)
 screenshots/            Reference renders
@@ -234,9 +299,10 @@ screenshots/            Reference renders
    `mocks/<brand>/mock-assets/`.
 3. `deleteSelectors` strips scripts, consent tooling and anything else that
    needs a live backend.
-4. `textReplacements` and `insertSelectors` replace the editorial copy with
-   placeholders and splice in the partials — the template mount point
-   (`{{ARTICLE_CONTENT}}`) and the top-media slot (`{{TOP_MEDIA_ELEMENT}}`).
+4. `mounts` splices the partials into the page — the `article` mount a template
+   fork renders into, and the optional `topMedia` slot — and `textReplacements`
+   swaps the editorial copy for placeholders. `mounts.article.selector` is what
+   `mock.json` records as `entryPointSelector`.
 5. All stylesheets are merged into one `merged.css`, asset URLs are rewritten to
    the `/mock-assets/` prefix, and referenced fonts are fetched.
 6. The HTML is formatted with Prettier and written together with `mock.json`.
@@ -249,7 +315,7 @@ No editorial text survives step 4 — the mocks carry chrome and layout only.
    `lang` and the selectors.
 2. Add the key to `BRANDS` in [integration/index.js](integration/index.js).
 3. If the platform's article markup differs, add a partial in `src/partials/`
-   and point `embedTemplate` at it.
+   and point `mounts.article.template` at it.
 4. `pnpm mock <key>`, check the screenshot, commit.
 
 ### The `/mock-assets` prefix

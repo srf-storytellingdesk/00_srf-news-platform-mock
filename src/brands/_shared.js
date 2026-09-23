@@ -32,15 +32,27 @@ export const PLACEHOLDER = {
 }
 
 /**
+ * @typedef {object} Mount
+ * @property {string} selector Element a template fork mounts into.
+ * @property {'replace'|'append'|'prepend'} [mode]
+ *   How the partial is spliced in relative to that element's content.
+ *   Defaults to `replace`.
+ * @property {string} template Partial in `src/partials/` to splice in.
+ */
+
+/**
  * @typedef {object} BrandConfig
  * @property {string} label      Human-readable platform name.
  * @property {string} lang       Value for the mock's `<html lang>`.
  * @property {string} fetchUrl   Article page to scrape.
- * @property {string} [embedTemplate] Partial spliced in for `{{ARTICLE_CONTENT}}`.
- * @property {string} [tmeTemplate]   Partial spliced in for `{{TOP_MEDIA_ELEMENT}}`.
+ * @property {object} mounts     Mount points a template fork needs.
+ * @property {Mount} mounts.article
+ *   The article body. Its selector is the mock's entry point and is baked into
+ *   `mock.json` as `entryPointSelector`.
+ * @property {Mount} [mounts.topMedia]
+ *   The top-media slot. Omit on platforms that have none.
  * @property {string[]} deleteSelectors Elements to remove.
- * @property {Record<string,string>} insertSelectors
- *   `selector -> text`; appends, or prepends when the selector starts with `^`.
  * @property {Record<string,string>} textReplacements
- *   `selector -> text`; replaces the element's text content.
+ *   `selector -> text`; replaces the element's text content. Placeholder
+ *   editorial copy only — mount points go in `mounts`.
  */

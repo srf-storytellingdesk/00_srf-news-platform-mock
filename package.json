@@ -21,6 +21,10 @@
   "exports": {
     ".": "./integration/index.js",
     "./vite": "./integration/vite.js",
+    "./react": {
+      "types": "./integration/react.d.ts",
+      "default": "./integration/react.js"
+    },
     "./mocks/*": "./mocks/*",
     "./package.json": "./package.json"
   },

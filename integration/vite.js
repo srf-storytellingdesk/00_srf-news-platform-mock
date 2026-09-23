@@ -7,17 +7,35 @@
  *   export default defineConfig({
  *     plugins: [platformMock({ brand: 'srf' }), react()],
  *   })
+ *
+ * Besides materialising the entry HTML, the plugin writes the mock's identity
+ * into that HTML as a JSON block, which is what `useMockVariables()` reads —
+ * see `mock-variables.js`.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { resolveMock } from './index.js'
+import { mockVariablesScript } from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
 const PLUGIN_NAME = 'srf-news-platform-mock'
 
 /** Marker that identifies an `index.html` this plugin owns. */
 const BANNER_ID = 'srf-news-platform-mock:generated'
+
+/**
+ * Filename `vite build` is pointed at, written next to the dev entry.
+ *
+ * A build must never write over the dev entry document: a dev server watching
+ * that file picks up the bare build document and from then on serves the
+ * widget with no platform chrome and no mock variables — the page looks broken
+ * until the server is restarted. So the build gets an entry of its own. Same
+ * directory as the dev entry, so relative asset URLs resolve identically;
+ * dot-prefixed and deleted again once the bundle is written, so it stays out of
+ * the fork's way.
+ */
+const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
 
 /**
  * @typedef {object} PlatformMockOptions
@@ -36,15 +54,16 @@ const BANNER_ID = 'srf-news-platform-mock:generated'
  *   Substitutes the mock's `<%= title %>` placeholder. Same defaulting as
  *   `mountId`.
  * @property {string} [htmlPath]
- *   Where the entry HTML is materialised. Defaults to `<root>/index.html`,
- *   which is what Vite expects and what forks already gitignore.
+ *   Where the dev entry HTML is materialised. Defaults to `<root>/index.html`,
+ *   which is what Vite expects and what forks already gitignore. A build never
+ *   writes here — it gets an entry of its own, see `BUILD_ENTRY_NAME`.
  * @property {'none'|'minimal'|'mock'} [buildHtml]
  *   What `vite build` leaves in `dist/`. `'none'` (default) emits no entry
  *   document at all: a fork deploys its bundle into a CMS article, so an
  *   `index.html` in the build output is dead weight that has to be deleted
  *   again before upload. Vite still needs an entry to build from, so the bare
- *   mount-point document is written to the project root as usual — it is just
- *   dropped from the output. `'minimal'` keeps that bare document in `dist/`
+ *   mount-point document is written next to the dev entry — it is just dropped
+ *   from the output again. `'minimal'` keeps that bare document in `dist/`
  *   (use it if you want `vite preview` to work). `'mock'` builds the full
  *   platform page — pair it with `assets: 'copy'` for a self-contained static
  *   preview.
@@ -78,25 +97,82 @@ export default function platformMock(options = {}) {
 
   /** @type {import('./index.js').Mock} */
   let mock
+  /** The dev entry — written on `serve`, never touched by a build. */
   let resolvedHtmlPath
+  /** Bundle key the entry document should be emitted under. */
   let entryHtmlKey
+  /** The document a build reads, and the key rollup files it under. */
+  let buildEntryPath = null
+  let buildEntryKey = null
+  /** Paths derived in `config()`, where the build input has to be set. */
+  let planned = null
+  let keepBuildEntry = false
   let command
 
   return {
     name: PLUGIN_NAME,
     enforce: 'pre',
 
+    // Pointing the build at its own entry has to happen before Vite resolves
+    // the config, which is why this cannot wait for `configResolved`.
+    config(userConfig, env) {
+      if (env.command !== 'build') return
+
+      const root = path.resolve(userConfig.root ?? process.cwd())
+      const htmlTarget = resolveEntryPath(root, htmlPath)
+      planned = { root, buildEntry: buildEntryPathFor(htmlTarget) }
+
+      const existing =
+        userConfig.build?.rolldownOptions?.input ??
+        userConfig.build?.rollupOptions?.input
+      if (existing === undefined) {
+        // Named, not bare: the entry chunk takes its name from its input, and
+        // `.platform-mock-entry-<hash>.js` is not what a fork wants to upload.
+        const name = path.basename(htmlTarget, path.extname(htmlTarget))
+        return {
+          build: { rollupOptions: { input: { [name]: planned.buildEntry } } },
+        }
+      }
+
+      // The fork configured its own entries. Only the one naming our document
+      // is redirected; everything else is theirs to build.
+      const input = redirectInput(
+        existing,
+        root,
+        htmlTarget,
+        planned.buildEntry,
+      )
+      if (input === existing) {
+        // Nothing of ours is being built — so write nothing.
+        planned.buildEntry = null
+        return
+      }
+      return { build: { rollupOptions: { input } } }
+    },
+
     configResolved(config) {
       command = config.command
       mock = resolveMock(brand)
-      resolvedHtmlPath = htmlPath
-        ? path.resolve(config.root, htmlPath)
-        : path.join(config.root, 'index.html')
-      entryHtmlKey = path
-        .relative(config.root, resolvedHtmlPath)
-        .split(path.sep)
-        .join('/')
+      resolvedHtmlPath = resolveEntryPath(config.root, htmlPath)
+      entryHtmlKey = toBundleKey(config.root, resolvedHtmlPath)
 
+      if (command === 'build') {
+        // `planned` is authoritative: it holds the path `input` points at.
+        buildEntryPath = planned
+          ? planned.buildEntry
+          : buildEntryPathFor(resolvedHtmlPath)
+        buildEntryKey = buildEntryPath
+          ? toBundleKey(config.root, buildEntryPath)
+          : null
+        // Watch mode re-reads the entry on every rebuild, so it has to stay.
+        keepBuildEntry = Boolean(config.build?.watch)
+      } else {
+        // A build killed before it could tidy up leaves its entry behind; the
+        // next dev server is the natural place to clear it.
+        removeGeneratedFile(buildEntryPathFor(resolvedHtmlPath))
+      }
+
+      const target = command === 'build' ? buildEntryPath : resolvedHtmlPath
       const useFullMock = command === 'serve' || buildHtml === 'mock'
       const html = useFullMock
         ? transformMockHtml(fs.readFileSync(mock.htmlPath, 'utf8'), {
@@ -106,7 +182,9 @@ export default function platformMock(options = {}) {
           })
         : buildMinimalHtml(mock, { entry, mountId, title })
 
-      writeGeneratedFile(resolvedHtmlPath, withBanner(html, mock, command))
+      if (target) {
+        writeGeneratedFile(target, stampGenerated(html, mock, command))
+      }
 
       if (assets === 'copy') {
         mirrorAssets(mock, path.join(config.publicDir, 'mock-assets'))
@@ -119,14 +197,29 @@ export default function platformMock(options = {}) {
     generateBundle: {
       order: 'post',
       handler(_options, bundle) {
-        if (buildHtml !== 'none') return
-
         for (const [fileName, output] of Object.entries(bundle)) {
-          if (isEntryDocument(fileName, output, entryHtmlKey)) {
-            delete bundle[fileName]
-          }
+          if (!isEntryDocument(fileName, output, [buildEntryKey, entryHtmlKey]))
+            continue
+
+          delete bundle[fileName]
+          if (buildHtml === 'none') continue
+
+          // It was built from `.platform-mock-entry.html`; ship it under the
+          // name the fork configured. Re-emitting rather than renaming in
+          // place: rolldown ignores writes to the bundle object.
+          this.emitFile({
+            type: 'asset',
+            fileName: entryHtmlKey,
+            source: output.source,
+          })
         }
       },
+    },
+
+    // The build entry has done its job once the bundle is written.
+    closeBundle() {
+      if (command !== 'build' || keepBuildEntry) return
+      removeGeneratedFile(buildEntryPath)
     },
 
     configureServer(server) {
@@ -213,14 +306,61 @@ function buildMinimalHtml(mock, { entry, mountId, title }) {
  * Matches on the emitted file name, and falls back to the banner for an entry
  * that Vite renamed or wrote outside the project root.
  */
-function isEntryDocument(fileName, output, entryHtmlKey) {
+function isEntryDocument(fileName, output, keys) {
   if (output.type !== 'asset' || !fileName.endsWith('.html')) return false
-  if (fileName === entryHtmlKey) return true
+  if (keys.includes(fileName)) return true
   return String(output.source).includes(BANNER_ID)
 }
 
-/** Stamps the generated file so it is obvious it must not be edited. */
-function withBanner(html, mock, command) {
+/** Where the entry document lives, given a root and the `htmlPath` option. */
+function resolveEntryPath(root, htmlPath) {
+  return htmlPath ? path.resolve(root, htmlPath) : path.join(root, 'index.html')
+}
+
+/** The build's own entry, alongside the dev entry it must not overwrite. */
+function buildEntryPathFor(entryPath) {
+  return path.join(path.dirname(entryPath), BUILD_ENTRY_NAME)
+}
+
+/** Rollup addresses bundle entries by root-relative POSIX path. */
+function toBundleKey(root, filePath) {
+  return path.relative(root, filePath).split(path.sep).join('/')
+}
+
+/**
+ * Swaps `from` for `to` in a fork-supplied rollup `input`, whatever shape it
+ * has. Returns the value untouched when the fork builds documents of its own
+ * only — redirecting those is none of this plugin's business.
+ */
+function redirectInput(input, root, from, to) {
+  const swap = (value) =>
+    typeof value === 'string' && path.resolve(root, value) === from ? to : value
+
+  if (typeof input === 'string') return swap(input)
+
+  if (Array.isArray(input)) {
+    const next = input.map(swap)
+    return next.some((value, i) => value !== input[i]) ? next : input
+  }
+
+  if (input && typeof input === 'object') {
+    const entries = Object.entries(input).map(([key, value]) => [
+      key,
+      swap(value),
+    ])
+    return entries.some(([key, value]) => value !== input[key])
+      ? Object.fromEntries(entries)
+      : input
+  }
+
+  return input
+}
+
+/**
+ * Everything the plugin adds to a document it generates: the do-not-edit
+ * banner, and the variables block `useMockVariables()` reads back out.
+ */
+function stampGenerated(html, mock, command) {
   const banner =
     `<!-- ${BANNER_ID} -->\n` +
     `<!--\n` +
@@ -232,9 +372,27 @@ function withBanner(html, mock, command) {
 
   // After the doctype, so the document never starts with a comment.
   const doctype = html.match(/^\s*<!doctype html>/i)
-  return doctype
+  const stamped = doctype
     ? html.replace(doctype[0], `${doctype[0].trim()}\n${banner}`)
     : banner + html
+
+  return withMockVariables(stamped, mock)
+}
+
+/**
+ * Puts the variables block at the end of `<head>` — after the charset meta,
+ * which has to come first, and long before the fork's deferred module script
+ * runs.
+ */
+function withMockVariables(html, mock) {
+  if (!/<\/head>/i.test(html)) {
+    throw new Error(
+      `[platform-mock] No </head> in the ${mock.brand} mock — nowhere to write ` +
+        `the variables useMockVariables() reads. Regenerate it with ` +
+        `\`pnpm mock ${mock.brand}\`.`,
+    )
+  }
+  return html.replace(/<\/head>/i, `  ${mockVariablesScript(mock)}\n  </head>`)
 }
 
 /**
@@ -255,6 +413,13 @@ function writeGeneratedFile(filePath, content) {
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, content, 'utf8')
+}
+
+/** Deletes a file this plugin generated, and only such a file. */
+function removeGeneratedFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return
+  if (!fs.readFileSync(filePath, 'utf8').includes(BANNER_ID)) return
+  fs.rmSync(filePath, { force: true })
 }
 
 /**

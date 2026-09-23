@@ -8,18 +8,20 @@ export default {
   fetchUrl:
     'https://www.swissinfo.ch/eng/global-trade/swiss-group-supports-gulf-oil-and-gas-repairs/91632308',
 
-  embedTemplate: 'embed_swi.html',
-  tmeTemplate: 'tme_default.html',
+  mounts: {
+    // No topMedia mount — SWI's article page has no top-media slot.
+    article: {
+      selector: 'main article .article-main',
+      mode: 'append',
+      template: 'embed_swi.html',
+    },
+  },
 
   deleteSelectors: [
     ...COMMON_DELETE_SELECTORS,
     // Drop the real article body but keep the meta rows around it.
     'main article .article-main > *:not(.article-meta-list):not(.article-meta-row)',
   ],
-
-  insertSelectors: {
-    'main article .article-main': '{{ARTICLE_CONTENT}}',
-  },
 
   textReplacements: {
     title: '{{ARTICLE_TITLE}}',

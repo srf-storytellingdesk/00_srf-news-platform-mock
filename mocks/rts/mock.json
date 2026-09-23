@@ -2,6 +2,7 @@
   "brand": "rts",
   "label": "RTS",
   "lang": "fr",
+  "entryPointSelector": "[data-area-id=\"article-content\"] .article-body",
   "sourceUrl": "https://www.rts.ch/info/regions/vaud/2026/article/gale-dans-la-broye-les-cas-confirmes-sont-rares-dans-le-canton-de-vaud-29283692.html",
   "assetsUrl": "/mock-assets",
   "assetCount": 26,

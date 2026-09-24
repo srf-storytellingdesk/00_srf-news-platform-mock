@@ -51,11 +51,10 @@
     <link rel="dns-prefetch" href="//web.cmp.usercentrics.eu" />
     <link rel="dns-prefetch" href="//privacy-proxy.usercentrics.eu" />
     <link rel="dns-prefetch" href="//swi.overlay.ebu-uer.be" />
-    <link rel="dns-prefetch" href="//sibforms.com" />
     <link href="//web.cmp.usercentrics.eu" rel="preconnect" />
     <link href="//api.usercentrics.eu" rel="preconnect" />
     <link href="//privacy-proxy.usercentrics.eu" rel="preconnect" />
-    <!-- www.swissinfo.ch is managing ads with Advanced Ads 2.0.25 – https://wpadvancedads.com/ -->
+    <!-- www.swissinfo.ch is managing ads with Advanced Ads 2.0.26 – https://wpadvancedads.com/ -->
 
     <link
       rel="EditURI"
@@ -92,23 +91,23 @@
 
     <link
       rel="icon"
-      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/svg/swi-site-icon.svg?ver=1770807995"
+      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/svg/swi-site-icon.svg?ver=1765874454"
       type="image/svg+xml"
       sizes="any"
     />
     <link
       rel="icon"
-      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-32.png?ver=1770807995"
+      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-32.png?ver=1765874454"
       sizes="32x32"
     />
     <link
       rel="icon"
-      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-192.png?ver=1770807995"
+      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-192.png?ver=1765874454"
       sizes="192x192"
     />
     <link
       rel="apple-touch-icon"
-      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-180.png?ver=1770807995"
+      href="/mock-assets/eng/wp-content/client-mu-plugins/swissinfo-wp-customizations/resources/png/swi-site-icon-180.png?ver=1765874454"
     />
 
     <link rel="stylesheet" href="/mock-assets/merged.css" />
@@ -815,7 +814,10 @@
               x-bind:class="isFlyoutMenuContainerOpen &amp;&amp; '--is-open'"
               x-on:click.stop="$dispatch('header-flyout-menu-container-toggle')"
             >
-              <span class="profile-picture --x-small">
+              <span
+                class="profile-picture --x-small"
+                x-data="userProfilePicture"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="currentColor"
@@ -1808,8 +1810,8 @@
     ></div>
 
     <div
-      class="swiss-ff4b8a8a3686c84c74375e4450311570 swiss-desktop-pop-up"
-      id="swiss-ff4b8a8a3686c84c74375e4450311570"
+      class="swiss-d51b9790611c91bcb714b6bb3ca36572 swiss-desktop-pop-up"
+      id="swiss-d51b9790611c91bcb714b6bb3ca36572"
     >
       <div
         class="swiss-desktop-pop-up swiss-entity-placement swiss-layer advads-effect advads-effect-slide advads-duration-1000 swiss-layer-delay advads-close is-sticky"
@@ -1825,7 +1827,7 @@
           bottom: 0px;
           right: 0px;
         "
-        id="swiss-3391190944"
+        id="swiss-514142287"
       >
         <a
           href="#"
@@ -1847,8 +1849,8 @@
           >×</a
         >
         <div
-          id="swiss-1839723575"
-          class="brv-signup aaa --type-plain swiss-target"
+          id="swiss-992428752"
+          class="brv-signup swiss-target aaa --type-plain swiss-target"
           data-swiss-trackid="3190827"
           data-swiss-trackbid="2"
         >
@@ -2141,8 +2143,8 @@
       </div>
     </div>
     <div
-      class="swiss-45d5369e0e4dfb69f00e85210a934523 swiss-mobile-pop-up"
-      id="swiss-45d5369e0e4dfb69f00e85210a934523"
+      class="swiss-566da923bef0ec099f63c2123c8f170c swiss-mobile-pop-up"
+      id="swiss-566da923bef0ec099f63c2123c8f170c"
     ></div>
     <!-- Start of Survicate (www.survicate.com) code -->
 

@@ -25,15 +25,17 @@ const PLUGIN_NAME = 'srf-news-platform-mock'
 const BANNER_ID = 'srf-news-platform-mock:generated'
 
 /**
- * Filename `vite build` is pointed at, written next to the dev entry.
+ * Module id `vite build` is pointed at, a path next to the dev entry.
  *
  * A build must never write over the dev entry document: a dev server watching
  * that file picks up the bare build document and from then on serves the
  * widget with no platform chrome and no mock variables — the page looks broken
  * until the server is restarted. So the build gets an entry of its own. Same
- * directory as the dev entry, so relative asset URLs resolve identically;
- * dot-prefixed and deleted again once the bundle is written, so it stays out of
- * the fork's way.
+ * directory as the dev entry, so relative asset URLs resolve identically.
+ *
+ * Nothing is ever written there: the plugin serves the document from memory
+ * through `resolveId`/`load`, so there is no file for a fork to gitignore or
+ * to commit by accident.
  */
 const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
 
@@ -62,7 +64,7 @@ const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
  *   document at all: a fork deploys its bundle into a CMS article, so an
  *   `index.html` in the build output is dead weight that has to be deleted
  *   again before upload. Vite still needs an entry to build from, so the bare
- *   mount-point document is written next to the dev entry — it is just dropped
+ *   mount-point document is served to it from memory — it is just dropped
  *   from the output again. `'minimal'` keeps that bare document in `dist/`
  *   (use it if you want `vite preview` to work). `'mock'` builds the full
  *   platform page — pair it with `assets: 'copy'` for a self-contained static
@@ -101,12 +103,13 @@ export default function platformMock(options = {}) {
   let resolvedHtmlPath
   /** Bundle key the entry document should be emitted under. */
   let entryHtmlKey
-  /** The document a build reads, and the key rollup files it under. */
+  /** The id a build reads its entry from, and the key rollup files it under. */
   let buildEntryPath = null
   let buildEntryKey = null
+  /** The build entry's contents, served from memory under `buildEntryPath`. */
+  let buildEntryHtml = null
   /** Paths derived in `config()`, where the build input has to be set. */
   let planned = null
-  let keepBuildEntry = false
   let command
 
   return {
@@ -143,7 +146,7 @@ export default function platformMock(options = {}) {
         planned.buildEntry,
       )
       if (input === existing) {
-        // Nothing of ours is being built — so write nothing.
+        // Nothing of ours is being built — so serve nothing.
         planned.buildEntry = null
         return
       }
@@ -164,12 +167,6 @@ export default function platformMock(options = {}) {
         buildEntryKey = buildEntryPath
           ? toBundleKey(config.root, buildEntryPath)
           : null
-        // Watch mode re-reads the entry on every rebuild, so it has to stay.
-        keepBuildEntry = Boolean(config.build?.watch)
-      } else {
-        // A build killed before it could tidy up leaves its entry behind; the
-        // next dev server is the natural place to clear it.
-        removeGeneratedFile(buildEntryPathFor(resolvedHtmlPath))
       }
 
       const target = command === 'build' ? buildEntryPath : resolvedHtmlPath
@@ -182,13 +179,27 @@ export default function platformMock(options = {}) {
           })
         : buildMinimalHtml(mock, { entry, mountId, title })
 
-      if (target) {
+      if (command === 'build') {
+        buildEntryHtml = target ? stampGenerated(html, mock, command) : null
+      } else {
         writeGeneratedFile(target, stampGenerated(html, mock, command))
       }
 
       if (assets === 'copy') {
         mirrorAssets(mock, path.join(config.publicDir, 'mock-assets'))
       }
+    },
+
+    // The build entry exists only in memory. `vite:build-html` transforms
+    // whatever `load` returns for an `.html` id, so it never needs the file.
+    resolveId(id) {
+      if (buildEntryHtml && path.resolve(id) === buildEntryPath) {
+        return buildEntryPath
+      }
+    },
+
+    load(id) {
+      if (buildEntryHtml && id === buildEntryPath) return buildEntryHtml
     },
 
     // `order: 'post'` so this runs after Vite's own HTML plugin has emitted the
@@ -214,12 +225,6 @@ export default function platformMock(options = {}) {
           })
         }
       },
-    },
-
-    // The build entry has done its job once the bundle is written.
-    closeBundle() {
-      if (command !== 'build' || keepBuildEntry) return
-      removeGeneratedFile(buildEntryPath)
     },
 
     configureServer(server) {
@@ -413,13 +418,6 @@ function writeGeneratedFile(filePath, content) {
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, content, 'utf8')
-}
-
-/** Deletes a file this plugin generated, and only such a file. */
-function removeGeneratedFile(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return
-  if (!fs.readFileSync(filePath, 'utf8').includes(BANNER_ID)) return
-  fs.rmSync(filePath, { force: true })
 }
 
 /**

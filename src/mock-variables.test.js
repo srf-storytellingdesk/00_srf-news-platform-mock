@@ -135,18 +135,19 @@ describe('what the plugin writes', () => {
   })
 
   const generate = (options, command) => {
-    platformMock({ brand: 'rsi', ...options }).configResolved({
+    const plugin = platformMock({ brand: 'rsi', ...options })
+    plugin.configResolved({
       command,
       root,
       base: '/',
       publicDir: path.join(root, 'public'),
       build: {},
     })
-    // A build writes its own entry document; the dev one stays put so a
-    // running dev server keeps serving the full mock.
-    const file =
-      command === 'build' ? '.platform-mock-entry.html' : 'index.html'
-    return fs.readFileSync(path.join(root, file), 'utf8')
+    // A build serves its own entry document from memory; the dev one stays
+    // put so a running dev server keeps serving the full mock.
+    return command === 'build'
+      ? plugin.load(path.join(root, '.platform-mock-entry.html'))
+      : fs.readFileSync(path.join(root, 'index.html'), 'utf8')
   }
 
   it('puts the variables in the dev document, inside <head>', () => {

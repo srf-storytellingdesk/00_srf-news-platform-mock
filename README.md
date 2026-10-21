@@ -102,17 +102,17 @@ Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
 
 ### Plugin options
 
-| Option      | Default             | Meaning                                                                                                                                                        |
-| ----------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                               |
-| `layout`    | `'default'`         | One of the brand's [layouts](#layouts), e.g. `'fullwidth'` for `rts`. Falls back to `PLATFORM_MOCK_LAYOUT`.                                                    |
-| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                         |
-| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                         |
-| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                 |
-| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                           |
-| `buildHtml` | `'none'`            | `'none'` \| `'minimal'` \| `'mock'` — what ends up in `dist/`, see the table above.                                                                            |
-| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
-| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
+| Option      | Default             | Meaning                                                                                                                                                         |
+| ----------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                                |
+| `layout`    | `'default'`         | One of the brand's [layouts](#layouts), e.g. `'fullwidth'` for `rts`. Falls back to `PLATFORM_MOCK_LAYOUT`; a layout the brand lacks falls back to `'default'`. |
+| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                          |
+| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                          |
+| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                  |
+| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                            |
+| `buildHtml` | `'none'`            | `'none'` \| `'minimal'` \| `'mock'` — what ends up in `dist/`, see the table above.                                                                             |
+| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`).  |
+| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                    |
 
 ### Node API
 

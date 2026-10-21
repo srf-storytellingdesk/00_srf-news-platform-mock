@@ -15,7 +15,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { DEFAULT_LAYOUT, resolveMock } from './index.js'
+import { DEFAULT_LAYOUT, listLayouts, resolveMock } from './index.js'
 import { mockVariablesScript } from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
@@ -48,7 +48,9 @@ const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
  * @property {string} [layout]
  *   Which of the brand's page layouts to mock, e.g. `'fullwidth'` for RTS.
  *   Falls back to `process.env.PLATFORM_MOCK_LAYOUT`, then `'default'` — the
- *   regular article page every brand has.
+ *   regular article page every brand has. A layout the brand does not offer
+ *   falls back to `'default'` too, with a warning, so one fork config works
+ *   across brands.
  * @property {string|null} [entry]
  *   Module the mock should mount. When set, the mock's `<script type="module">`
  *   src is rewritten to it. Defaults to `null` — keep whatever the mock ships
@@ -160,7 +162,7 @@ export default function platformMock(options = {}) {
 
     configResolved(config) {
       command = config.command
-      mock = resolveMock(brand, { layout })
+      mock = resolveMock(brand, { layout: layoutFor(brand, layout) })
       resolvedHtmlPath = resolveEntryPath(config.root, htmlPath)
       entryHtmlKey = toBundleKey(config.root, resolvedHtmlPath)
 
@@ -258,6 +260,23 @@ export default function platformMock(options = {}) {
       })
     },
   }
+}
+
+/**
+ * The layout to mock: the requested one if the brand offers it, otherwise the
+ * default layout every brand has. An unknown brand is left for `resolveMock()`
+ * to report.
+ */
+function layoutFor(brand, layout) {
+  if (layout === DEFAULT_LAYOUT) return layout
+  const available = listLayouts(brand)
+  if (available.length === 0 || available.includes(layout)) return layout
+
+  console.warn(
+    `[platform-mock] Brand "${brand}" has no "${layout}" layout ` +
+      `(available: ${available.join(', ')}) — using "${DEFAULT_LAYOUT}".`,
+  )
+  return DEFAULT_LAYOUT
 }
 
 /** URL prefixes the asset middleware is mounted on. */

@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ASSETS_URL,
@@ -127,6 +127,19 @@ describe('platformMock vite plugin', () => {
     expect(html).toContain('data-bu="srf"')
     expect(html).toContain(`${ASSETS_URL}/merged.css`)
     expect(html).toMatch(/^<!doctype html>/i) // banner must not precede it
+  })
+
+  it("falls back to the default layout for one the brand doesn't offer", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    platformMock({ brand: 'srf', layout: 'fullwidth' }).configResolved(
+      fakeConfig('serve'),
+    )
+
+    const html = indexHtml()
+    expect(html).toContain('layout: default')
+    expect(html).toContain('"layout":"default"')
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/no "fullwidth"/))
+    warn.mockRestore()
   })
 
   it('materialises the configured layout', () => {

@@ -52,6 +52,10 @@ export const PLACEHOLDER = {
  * @property {Mount} [mounts.topMedia]
  *   The top-media slot. Omit on platforms that have none.
  * @property {string[]} deleteSelectors Elements to remove.
+ * @property {RegExp[]} [keepScripts]
+ *   Allowlist of same-origin scripts to keep, matched against each script's
+ *   absolute URL. Matching files are saved to the mock and their
+ *   `<script src>` survives `deleteSelectors`; every other script is dropped.
  * @property {Record<string,string>} textReplacements
  *   `selector -> text`; replaces the element's text content. Placeholder
  *   editorial copy only — mount points go in `mounts`.

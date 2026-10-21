@@ -23,6 +23,8 @@ export default {
 
   deleteSelectors: [...COMMON_DELETE_SELECTORS],
 
+  keepScripts: [/\/hbv7\/static\/js\/rts-[^/]*\.js$/],
+
   textReplacements: {
     title: '{{ARTICLE_TITLE}}',
     '.article-category': PLACEHOLDER.overline,

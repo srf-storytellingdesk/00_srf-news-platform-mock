@@ -69,6 +69,15 @@ const ASSET_TYPES = [
 ]
 
 /**
+ * Scripts are only saved when a brand allowlists them in `keepScripts`;
+ * everything else that runs on the live page stays out of the mock.
+ */
+const SCRIPT_TYPE = { encoding: 'utf8', fallbackExt: '.js' }
+
+const isScript = (contentType, url) =>
+  contentType.includes('javascript') || /\.m?js(\?|$)/.test(url)
+
+/**
  * Generates one brand's mock into `mocks/<brand>/`.
  * @param {string} brand
  * @returns {Promise<{brand: string, outDir: string, htmlPath: string, manifest: object}>}
@@ -135,6 +144,7 @@ export async function generateMock(brand) {
 
 /** Drives the headless browser and returns the cleaned-up serialised DOM. */
 async function scrapePage(config, assetsDir, fetchUrlOrigin) {
+  const keepScripts = config.keepScripts ?? []
   const browser = await puppeteer.launch()
   try {
     const page = await browser.newPage()
@@ -148,9 +158,9 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
         if (!url.startsWith(fetchUrlOrigin)) return
         if (seen.has(url)) return
 
-        const type = ASSET_TYPES.find((candidate) =>
-          candidate.test(contentType, url),
-        )
+        const type = isScript(contentType, url)
+          ? keepScripts.some((pattern) => pattern.test(url)) && SCRIPT_TYPE
+          : ASSET_TYPES.find((candidate) => candidate.test(contentType, url))
         if (!type) return
 
         seen.add(url)
@@ -166,7 +176,11 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
     await page.evaluate(scrollToBottom)
     await wait(TIME_TO_WAIT_AFTER_SCROLL) // let lazy images finish
 
-    await page.evaluate(removeSelectors, config.deleteSelectors ?? [])
+    await page.evaluate(
+      removeSelectors,
+      config.deleteSelectors ?? [],
+      keepScripts.map((pattern) => [pattern.source, pattern.flags]),
+    )
     await page.evaluate(applyDomEdits, buildDomEdits(config))
     await page.evaluate(
       inlineSingleStylesheet,

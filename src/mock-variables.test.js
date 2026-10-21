@@ -54,6 +54,7 @@ describe('the catalogue', () => {
 
       expect(Object.keys(variables), brand).toEqual(KEYS)
       expect(variables.platform, brand).toBe(brand)
+      expect(variables.layout, brand).toBe('default')
       expect(variables.label, brand).toBeTruthy()
       expect(variables.lang, brand).toMatch(/^[a-z]{2}$/)
       expect(variables.entryPoint, brand).toBe(mock.manifest.entryPointSelector)
@@ -93,6 +94,7 @@ describe('the hook reading it back', () => {
     )
     expect(useMockVariables()).toEqual({
       platform: 'rtr',
+      layout: 'default',
       label: 'RTR',
       lang: 'rm',
       entryPoint: '[data-news-landmark="article-content"]',

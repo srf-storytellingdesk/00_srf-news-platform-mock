@@ -58,5 +58,22 @@ export const PLACEHOLDER = {
  *   `<script src>` survives `deleteSelectors`; every other script is dropped.
  * @property {Record<string,string>} textReplacements
  *   `selector -> text`; replaces the element's text content. Placeholder
- *   editorial copy only — mount points go in `mounts`.
+ *   editorial copy only — mount points go in `mounts`. * @property {Record<string,Layout>} [layouts]
+ *   Further page layouts this brand offers, keyed by layout name. Each one is
+ *   scraped into a mock of its own, `mocks/<brand>--<layout>/`; the config
+ *   above is the `default` layout.
+ */
+
+/**
+ * Overrides for one layout, applied on top of the brand config. Top-level keys
+ * replace the base ones; `mounts` merges per mount, and `null` drops one.
+ * A layout normally needs its own `fetchUrl`: the mock's CSS is purged to the
+ * classes the scraped page uses, so a layout cannot be derived from another
+ * layout's page.
+ * @typedef {object} Layout
+ * @property {string} [fetchUrl]
+ * @property {{article?: Mount|null, topMedia?: Mount|null}} [mounts]
+ * @property {string[]} [deleteSelectors]
+ * @property {RegExp[]} [keepScripts]
+ * @property {Record<string,string>} [textReplacements]
  */

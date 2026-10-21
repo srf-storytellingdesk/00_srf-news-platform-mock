@@ -11,10 +11,16 @@ import path from 'node:path'
 import prettier from 'prettier'
 import puppeteer from 'puppeteer'
 
-import { ASSETS_DIRNAME, MOCKS_DIR } from '../integration/index.js'
+import {
+  ASSETS_DIRNAME,
+  DEFAULT_LAYOUT,
+  MOCKS_DIR,
+  mockDirName,
+} from '../integration/index.js'
 import {
   applyDomEdits,
   inlineSingleStylesheet,
+  preloadKeptScripts,
   removeSelectors,
   scrollToBottom,
 } from './browser/page-actions.js'
@@ -77,20 +83,25 @@ const SCRIPT_TYPE = { encoding: 'utf8', fallbackExt: '.js' }
 const isScript = (contentType, url) =>
   contentType.includes('javascript') || /\.m?js(\?|$)/.test(url)
 
-/**
- * Generates one brand's mock into `mocks/<brand>/`.
- * @param {string} brand
- * @returns {Promise<{brand: string, outDir: string, htmlPath: string, manifest: object}>}
- */
-export async function generateMock(brand) {
-  const config = await loadBrandConfig(brand)
+/** Layout keys must never produce an ambiguous `<brand>--<layout>` name. */
+const LAYOUT_KEY = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-  const outDir = path.join(MOCKS_DIR, brand)
+/**
+ * Generates one brand layout's mock into `mocks/<brand>/` (the default layout)
+ * or `mocks/<brand>--<layout>/`.
+ * @param {string} brand
+ * @param {string} [layout]
+ * @returns {Promise<{brand: string, layout: string, outDir: string, htmlPath: string, manifest: object}>}
+ */
+export async function generateMock(brand, layout = DEFAULT_LAYOUT) {
+  const config = applyLayout(await loadBrandConfig(brand), layout)
+
+  const outDir = path.join(MOCKS_DIR, mockDirName(brand, layout))
   const assetsDir = path.join(outDir, ASSETS_DIRNAME)
   const htmlPath = path.join(outDir, 'index.html')
   const fetchUrlOrigin = new URL(config.fetchUrl).origin
 
-  console.log(`\n▶ ${brand}: ${config.fetchUrl}`)
+  console.log(`\n▶ ${brand}:${layout}: ${config.fetchUrl}`)
 
   const placeholders = {
     ARTICLE_TITLE: '<%= title %>',
@@ -137,9 +148,9 @@ export async function generateMock(brand) {
     src.replace(`../${ASSETS_DIRNAME}`, fetchUrlOrigin),
   )
 
-  const manifest = await writeManifest(outDir, brand, config, assetsDir)
+  const manifest = await writeManifest(outDir, brand, layout, config, assetsDir)
 
-  return { brand, outDir, htmlPath, manifest }
+  return { brand, layout, outDir, htmlPath, manifest }
 }
 
 /** Drives the headless browser and returns the cleaned-up serialised DOM. */
@@ -149,6 +160,7 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
   try {
     const page = await browser.newPage()
     const seen = new Set()
+    const keptScriptUrls = []
 
     page.on('response', (response) => {
       try {
@@ -164,6 +176,7 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
         if (!type) return
 
         seen.add(url)
+        if (type === SCRIPT_TYPE) keptScriptUrls.push(url)
         downloadFile(response, assetsDir, type.encoding, type.fallbackExt)
       } catch (error) {
         console.warn('  ! Error saving asset:', error.message)
@@ -181,6 +194,7 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
       config.deleteSelectors ?? [],
       keepScripts.map((pattern) => [pattern.source, pattern.flags]),
     )
+    await page.evaluate(preloadKeptScripts, keptScriptUrls)
     await page.evaluate(applyDomEdits, buildDomEdits(config))
     await page.evaluate(
       inlineSingleStylesheet,
@@ -193,7 +207,7 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
   }
 }
 
-async function writeManifest(outDir, brand, config, assetsDir) {
+async function writeManifest(outDir, brand, layout, config, assetsDir) {
   // The selector of the element a template fork mounts its article into, baked
   // into mock.json so a consumer never has to re-derive it from a brand config.
   const entryPointSelector = config.mounts?.article?.selector
@@ -206,6 +220,7 @@ async function writeManifest(outDir, brand, config, assetsDir) {
 
   const manifest = {
     brand,
+    layout,
     label: config.label ?? brand.toUpperCase(),
     lang: config.lang ?? 'de',
     entryPointSelector,
@@ -257,6 +272,47 @@ function eachMount(config) {
   return Object.entries(MOUNT_TOKENS)
     .filter(([key]) => config.mounts?.[key])
     .map(([key, token]) => [key, token, config.mounts[key]])
+}
+
+/**
+ * Every layout a brand config declares, the default layout first.
+ * @param {string} brand
+ * @returns {Promise<string[]>}
+ */
+export async function brandLayouts(brand) {
+  const config = await loadBrandConfig(brand)
+  return [DEFAULT_LAYOUT, ...Object.keys(config.layouts ?? {})]
+}
+
+/**
+ * The brand config with one layout's overrides applied. Top-level keys replace
+ * the base ones; `mounts` merges per mount, and a mount set to `null` is
+ * dropped — e.g. a layout with no top-media slot.
+ * @param {import('./brands/_shared.js').BrandConfig} config
+ * @param {string} layout
+ * @returns {import('./brands/_shared.js').BrandConfig}
+ */
+export function applyLayout(config, layout) {
+  const { layouts = {}, ...base } = config
+  if (layout === DEFAULT_LAYOUT) return base
+
+  if (!Object.hasOwn(layouts, layout)) {
+    const known = [DEFAULT_LAYOUT, ...Object.keys(layouts)].join(', ')
+    throw new Error(`Unknown layout "${layout}". Expected one of: ${known}.`)
+  }
+  if (!LAYOUT_KEY.test(layout)) {
+    throw new Error(`Invalid layout key: ${JSON.stringify(layout)}`)
+  }
+
+  const { mounts = {}, ...overrides } = layouts[layout]
+  const mergedMounts = Object.entries({ ...base.mounts, ...mounts }).filter(
+    ([, mount]) => mount,
+  )
+  return {
+    ...base,
+    ...overrides,
+    mounts: Object.fromEntries(mergedMounts),
+  }
 }
 
 async function loadBrandConfig(brand) {

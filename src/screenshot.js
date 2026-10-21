@@ -10,6 +10,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
 
+import { DEFAULT_LAYOUT, mockDirName } from '../integration/index.js'
 import { unlockPageScroll } from './browser/page-actions.js'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -19,11 +20,13 @@ const LOADING_SCREEN = '[data-news-landmark="news-loading-screen"]'
 
 /**
  * @param {string} brand
+ * @param {string} [layout]
  * @returns {Promise<string>} Absolute path of the written PNG.
  */
-export async function takeScreenshot(brand) {
+export async function takeScreenshot(brand, layout = DEFAULT_LAYOUT) {
   // The preview's vite.config.js reads the brand from the environment.
   process.env.PLATFORM_MOCK_BRAND = brand
+  process.env.PLATFORM_MOCK_LAYOUT = layout
 
   const { createServer } = await import('vite')
   const server = await createServer({
@@ -42,7 +45,8 @@ export async function takeScreenshot(brand) {
   }
 
   await fs.mkdir(SCREENSHOTS_DIR, { recursive: true })
-  const outPath = path.join(SCREENSHOTS_DIR, `${brand}.png`)
+  const fileName = `${mockDirName(brand, layout)}.png`
+  const outPath = path.join(SCREENSHOTS_DIR, fileName)
   const browser = await puppeteer.launch()
 
   try {
@@ -60,7 +64,7 @@ export async function takeScreenshot(brand) {
     await page.screenshot({ path: outPath })
 
     console.log(
-      `  ✓ screenshots/${brand}.png (${VIEWPORT_WIDTH}×${contentHeight})`,
+      `  ✓ screenshots/${fileName} (${VIEWPORT_WIDTH}×${contentHeight})`,
     )
     return outPath
   } finally {

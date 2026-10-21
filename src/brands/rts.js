@@ -31,4 +31,24 @@ export default {
     '.article-title': PLACEHOLDER.title,
     '.article-lead': PLACEHOLDER.lead,
   },
+
+  layouts: {
+    // A full-bleed embed with no article header of its own.
+    fullwidth: {
+      fetchUrl:
+        'https://www.rts.ch/info/monde/2026/article/bikini-l-histoire-de-l-exil-face-aux-essais-nucleaires-29269618.html',
+      mounts: {
+        article: {
+          selector:
+            '[data-area-id="article-content"] .rts-full-width-container .raw_html .embed-content',
+          mode: 'replace',
+          template: 'embed_rts_fullwidth.html',
+        },
+        topMedia: null,
+      },
+      textReplacements: {
+        title: '{{ARTICLE_TITLE}}',
+      },
+    },
+  },
 }

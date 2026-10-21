@@ -15,7 +15,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { resolveMock } from './index.js'
+import { DEFAULT_LAYOUT, resolveMock } from './index.js'
 import { mockVariablesScript } from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
@@ -45,6 +45,10 @@ const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
  *   Brand to mock — `'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'`. Falls back to
  *   `process.env.PLATFORM_MOCK_BRAND`, then `process.env.PLATFORM`, then
  *   `'srf'`.
+ * @property {string} [layout]
+ *   Which of the brand's page layouts to mock, e.g. `'fullwidth'` for RTS.
+ *   Falls back to `process.env.PLATFORM_MOCK_LAYOUT`, then `'default'` — the
+ *   regular article page every brand has.
  * @property {string|null} [entry]
  *   Module the mock should mount. When set, the mock's `<script type="module">`
  *   src is rewritten to it. Defaults to `null` — keep whatever the mock ships
@@ -85,6 +89,7 @@ const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
 export default function platformMock(options = {}) {
   const {
     brand = process.env.PLATFORM_MOCK_BRAND || process.env.PLATFORM || 'srf',
+    layout = process.env.PLATFORM_MOCK_LAYOUT || DEFAULT_LAYOUT,
     entry = null,
     mountId = null,
     title = null,
@@ -155,7 +160,7 @@ export default function platformMock(options = {}) {
 
     configResolved(config) {
       command = config.command
-      mock = resolveMock(brand)
+      mock = resolveMock(brand, { layout })
       resolvedHtmlPath = resolveEntryPath(config.root, htmlPath)
       entryHtmlKey = toBundleKey(config.root, resolvedHtmlPath)
 
@@ -248,7 +253,7 @@ export default function platformMock(options = {}) {
             : 'copied to public/'
         server.config.logger.info(
           `  \x1b[32m➜\x1b[0m  platform mock: \x1b[1m${mock.brand}\x1b[0m ` +
-            `(lang ${mock.lang}, generated ${mock.manifest.generatedAt ?? 'unknown'}) — assets ${source}`,
+            `(layout ${mock.layout}, lang ${mock.lang}, generated ${mock.manifest.generatedAt ?? 'unknown'}) — assets ${source}`,
         )
       })
     },
@@ -271,9 +276,12 @@ function assetMountPaths(base) {
 function transformMockHtml(html, { entry, mountId, title }) {
   let out = html
   if (entry) {
+    // Only the widget's own script, which the embed partials always ship as
+    // `/src/index.jsx`. Platform module scripts kept via `keepScripts` (RSI's
+    // Nuxt bundle) must keep their src.
     out = out.replace(
-      /(<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["'])([^"']+)(["'])/gi,
-      (_match, before, _src, after) => `${before}${entry}${after}`,
+      /(<script\b[^>]*\bsrc=["'])\/src\/index\.jsx(["'])/gi,
+      (_match, before, after) => `${before}${entry}${after}`,
     )
   }
   if (mountId) out = out.replaceAll('<%= id %>', mountId)
@@ -371,7 +379,7 @@ function stampGenerated(html, mock, command) {
     `<!--\n` +
     `  GENERATED FILE — DO NOT EDIT, DO NOT COMMIT.\n` +
     `  Written by the "${PLUGIN_NAME}" Vite plugin on every dev/build run.\n` +
-    `  brand: ${mock.brand} · mode: ${command} · source: ${mock.manifest.sourceUrl ?? 'n/a'}\n` +
+    `  brand: ${mock.brand} · layout: ${mock.layout} · mode: ${command} · source: ${mock.manifest.sourceUrl ?? 'n/a'}\n` +
     `  Change it in 00_srf-news-platform-mock, not here.\n` +
     `-->\n`
 
@@ -427,7 +435,7 @@ function writeGeneratedFile(filePath, content) {
  */
 function mirrorAssets(mock, targetDir) {
   const stampPath = path.join(targetDir, '.platform-mock-stamp')
-  const stamp = `${mock.brand}\n${mock.manifest.generatedAt ?? ''}\n`
+  const stamp = `${mock.brand}\n${mock.layout}\n${mock.manifest.generatedAt ?? ''}\n`
 
   if (
     fs.existsSync(stampPath) &&

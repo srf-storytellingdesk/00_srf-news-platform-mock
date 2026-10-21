@@ -5,18 +5,29 @@
  * Nothing a consuming fork needs: forks only use the Vite plugin. This is for
  * regenerating the committed mocks when a platform redesigns its article page.
  */
-import { BRANDS, listBrands, resolveMock } from '../integration/index.js'
-import { generateMock } from './generate.js'
+import {
+  BRANDS,
+  DEFAULT_LAYOUT,
+  listBrands,
+  listLayouts,
+  resolveMock,
+} from '../integration/index.js'
+import { brandLayouts, generateMock } from './generate.js'
 import { takeScreenshot } from './screenshot.js'
 
 const USAGE = `
-platform-mock <command> [brand]
+platform-mock <command> [target]
+
+Targets
+  <brand>                 Every layout of that brand.
+  <brand>:<layout>        One layout, e.g. rts:fullwidth.
+  all                     Every layout of every brand.
 
 Commands
-  generate [brand|all]    Re-scrape a platform and rewrite mocks/<brand>/.
+  generate [target]       Re-scrape a platform and rewrite its mocks/ folder.
                           Defaults to "srf". Takes a screenshot afterwards
                           unless --no-screenshot is passed.
-  screenshot [brand|all]  Re-capture screenshots/<brand>.png only.
+  screenshot [target]     Re-capture its screenshots/*.png only.
   list                    Show the mocks currently in this package.
   help                    Print this text.
 
@@ -25,6 +36,7 @@ Brands
 
 Examples
   platform-mock generate srf
+  platform-mock generate rts:fullwidth
   platform-mock generate all --no-screenshot
   platform-mock screenshot rts
 `
@@ -43,21 +55,21 @@ try {
 async function run(command, positional, flags) {
   switch (command) {
     case 'generate': {
-      const brands = expandBrands(positional[0] ?? 'srf')
+      const targets = await expandTargets(positional[0] ?? 'srf')
       const withScreenshot = !flags.has('--no-screenshot')
-      for (const brand of brands) {
-        await generateMock(brand)
-        if (withScreenshot) await takeScreenshot(brand)
+      for (const { brand, layout } of targets) {
+        await generateMock(brand, layout)
+        if (withScreenshot) await takeScreenshot(brand, layout)
       }
-      console.log(`\n✓ Generated: ${brands.join(', ')}\n`)
+      console.log(`\n✓ Generated: ${targets.map(formatTarget).join(', ')}\n`)
       return
     }
 
     case 'screenshot': {
-      const brands = expandBrands(positional[0] ?? 'srf')
-      for (const brand of brands) {
-        resolveMock(brand) // fail fast on an ungenerated brand
-        await takeScreenshot(brand)
+      const targets = await expandTargets(positional[0] ?? 'srf')
+      for (const { brand, layout } of targets) {
+        resolveMock(brand, { layout }) // fail fast on an ungenerated mock
+        await takeScreenshot(brand, layout)
       }
       return
     }
@@ -69,12 +81,14 @@ async function run(command, positional, flags) {
         return
       }
       for (const brand of present) {
-        const { lang, manifest } = resolveMock(brand)
-        console.log(
-          `${brand.padEnd(5)} lang ${lang.padEnd(3)} ` +
-            `${String(manifest.assetCount ?? '?').padStart(5)} assets  ` +
-            `generated ${manifest.generatedAt ?? 'unknown'}  ${manifest.sourceUrl ?? ''}`,
-        )
+        for (const layout of listLayouts(brand)) {
+          const { lang, manifest } = resolveMock(brand, { layout })
+          console.log(
+            `${formatTarget({ brand, layout }).padEnd(15)} lang ${lang.padEnd(3)} ` +
+              `${String(manifest.assetCount ?? '?').padStart(5)} assets  ` +
+              `generated ${manifest.generatedAt ?? 'unknown'}  ${manifest.sourceUrl ?? ''}`,
+          )
+        }
       }
       return
     }
@@ -90,12 +104,32 @@ async function run(command, positional, flags) {
   }
 }
 
-function expandBrands(arg) {
-  if (arg === 'all') return [...BRANDS]
-  if (!BRANDS.includes(arg)) {
+/** `all`, `<brand>` or `<brand>:<layout>` as a list of brand layouts. */
+async function expandTargets(arg) {
+  const [brand, layout] = arg.split(':')
+  if (arg === 'all') {
+    const targets = []
+    for (const each of BRANDS) targets.push(...(await expandTargets(each)))
+    return targets
+  }
+  if (!BRANDS.includes(brand)) {
     throw new Error(
-      `Unknown brand "${arg}". Expected one of: ${BRANDS.join(', ')}, or "all".`,
+      `Unknown brand "${brand}". Expected one of: ${BRANDS.join(', ')}, or "all".`,
     )
   }
-  return [arg]
+
+  const layouts = await brandLayouts(brand)
+  if (layout === undefined)
+    return layouts.map((each) => ({ brand, layout: each }))
+  if (!layouts.includes(layout)) {
+    throw new Error(
+      `Unknown layout "${layout}" for ${brand}. Expected one of: ${layouts.join(', ')}.`,
+    )
+  }
+  return [{ brand, layout }]
+}
+
+/** `srf`, or `rts:fullwidth` for anything but the default layout. */
+function formatTarget({ brand, layout }) {
+  return layout === DEFAULT_LAYOUT ? brand : `${brand}:${layout}`
 }

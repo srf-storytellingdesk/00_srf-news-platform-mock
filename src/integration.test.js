@@ -11,10 +11,12 @@ import {
   ASSETS_URL,
   BRANDS,
   listBrands,
+  listLayouts,
   readMockHtml,
   resolveMock,
 } from '../integration/index.js'
 import platformMock from '../integration/vite.js'
+import { applyLayout } from './generate.js'
 
 describe('resolveMock', () => {
   it('resolves every shipped brand to files that exist', () => {
@@ -38,6 +40,31 @@ describe('resolveMock', () => {
 
   it('throws when no brand is given', () => {
     expect(() => resolveMock()).toThrow(/No brand given/)
+  })
+
+  it('resolves a layout to a mock of its own', () => {
+    const mock = resolveMock('rts', { layout: 'fullwidth' })
+    expect(mock.layout).toBe('fullwidth')
+    expect(mock.dir).not.toBe(resolveMock('rts').dir)
+    expect(mock.manifest.layout).toBe('fullwidth')
+    expect(mock.manifest.entryPointSelector).toContain(
+      '.rts-full-width-container',
+    )
+  })
+
+  it('resolves the default layout when none is given', () => {
+    expect(resolveMock('rts').layout).toBe('default')
+  })
+
+  it('lists the layouts generated for a brand, default first', () => {
+    expect(listLayouts('rts')).toEqual(['default', 'fullwidth'])
+    expect(listLayouts('srf')).toEqual(['default'])
+  })
+
+  it('names the available layouts for an unknown one', () => {
+    expect(() => resolveMock('rts', { layout: 'wide' })).toThrow(
+      /Unknown or ungenerated layout "wide".*Available: default, fullwidth/,
+    )
   })
 
   it('serves its assets under the URL prefix baked into the mock HTML', () => {
@@ -100,6 +127,17 @@ describe('platformMock vite plugin', () => {
     expect(html).toContain('data-bu="srf"')
     expect(html).toContain(`${ASSETS_URL}/merged.css`)
     expect(html).toMatch(/^<!doctype html>/i) // banner must not precede it
+  })
+
+  it('materialises the configured layout', () => {
+    platformMock({ brand: 'rts', layout: 'fullwidth' }).configResolved(
+      fakeConfig('serve'),
+    )
+
+    const html = indexHtml()
+    expect(html).toContain('layout: fullwidth')
+    expect(html).toContain('"layout":"fullwidth"')
+    expect(html).toContain('rts-full-width-container')
   })
 
   it('serves a bare mount document for the build entry', () => {
@@ -252,6 +290,16 @@ describe('platformMock vite plugin', () => {
     expect(html).not.toContain('<%=')
   })
 
+  it('leaves kept platform module scripts alone when rewriting the entry', () => {
+    platformMock({ brand: 'rsi', entry: '/preview/main.jsx' }).configResolved(
+      fakeConfig('serve'),
+    )
+
+    const html = indexHtml()
+    expect(html).toContain('src="/mock-assets/_nuxt/')
+    expect(html.match(/\/preview\/main\.jsx/g)).toHaveLength(1)
+  })
+
   it('leaves the EJS placeholders for vite-plugin-html by default', () => {
     platformMock({ brand: 'srf' }).configResolved(fakeConfig('serve'))
 
@@ -318,5 +366,51 @@ describe('platformMock vite plugin', () => {
       .toThrow(/Invalid `assets`/)
     expect(() => platformMock({ brand: 'srf', buildHtml: 'full' })) //
       .toThrow(/Invalid `buildHtml`/)
+  })
+})
+
+describe('applyLayout', () => {
+  const base = {
+    fetchUrl: 'https://example.org/article',
+    mounts: {
+      article: { selector: '.body', template: 'a.html' },
+      topMedia: { selector: 'article', mode: 'prepend', template: 't.html' },
+    },
+    textReplacements: { title: 'T', '.lead': 'L' },
+    layouts: {
+      wide: {
+        fetchUrl: 'https://example.org/wide',
+        mounts: { article: { selector: '.wide', template: 'w.html' } },
+      },
+      bare: { mounts: { topMedia: null } },
+    },
+  }
+
+  it('returns the base config, minus its layouts, for the default layout', () => {
+    const config = applyLayout(base, 'default')
+    expect(config).not.toHaveProperty('layouts')
+    expect(config.mounts).toEqual(base.mounts)
+    expect(config.fetchUrl).toBe(base.fetchUrl)
+  })
+
+  it('replaces top-level keys and merges mounts per mount', () => {
+    const config = applyLayout(base, 'wide')
+    expect(config.fetchUrl).toBe('https://example.org/wide')
+    expect(config.mounts.article.selector).toBe('.wide')
+    expect(config.mounts.topMedia).toEqual(base.mounts.topMedia)
+    expect(config.textReplacements).toEqual(base.textReplacements)
+    expect(config).not.toHaveProperty('layouts')
+  })
+
+  it('drops a mount a layout sets to null', () => {
+    expect(applyLayout(base, 'bare').mounts).toEqual({
+      article: base.mounts.article,
+    })
+  })
+
+  it('names the known layouts for an unknown one', () => {
+    expect(() => applyLayout(base, 'tall')).toThrow(
+      /Unknown layout "tall".*default, wide, bare/,
+    )
   })
 })

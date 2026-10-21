@@ -48,6 +48,28 @@ export function removeSelectors(selectors, keepScripts = []) {
 }
 
 /**
+ * Preloads every kept script the page fetched that no `<script src>` loads
+ * directly — e.g. the chunks a Nuxt entry imports — so the mock pulls in the
+ * whole allowlisted bundle, not just its entry points.
+ *
+ * @param {string[]} urls Absolute URLs of the kept scripts.
+ */
+export function preloadKeptScripts(urls) {
+  const loaded = new Set(
+    [...document.querySelectorAll('script[src]')].map((el) => el.src),
+  )
+  urls
+    .filter((url) => !loaded.has(url))
+    .forEach((url) => {
+      const link = document.createElement('link')
+      link.rel = 'modulepreload'
+      link.href = url
+      link.crossOrigin = ''
+      document.head.appendChild(link)
+    })
+}
+
+/**
  * Applies the brand config's DOM edits: splices the template's mount points in
  * and swaps real editorial copy for placeholder text.
  *

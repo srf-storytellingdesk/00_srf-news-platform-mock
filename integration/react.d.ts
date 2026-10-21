@@ -11,6 +11,8 @@ export type MockPlatform = 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'
 export interface MockVariables {
   /** Brand key, or `null` in a build that is not running against a mock. */
   platform: MockPlatform | null
+  /** Page layout of the mock — `'default'`, or e.g. `'fullwidth'`. */
+  layout: string | null
   /** Human-readable platform name, for dev-only UI. */
   label: string | null
   /** The mock's `<html lang>`. */

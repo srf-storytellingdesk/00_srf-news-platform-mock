@@ -29,6 +29,11 @@ export const MOCK_VARIABLES = [
     read: (mock) => mock.brand,
   },
   {
+    key: 'layout',
+    describe: 'Page layout the plugin was configured with.',
+    read: (mock) => mock.layout,
+  },
+  {
     key: 'label',
     describe: 'Human-readable platform name, for dev-only UI.',
     read: (mock) => mock.manifest.label ?? mock.brand.toUpperCase(),
@@ -52,6 +57,7 @@ export const MOCK_VARIABLES = [
  */
 export const NO_MOCK_VARIABLES = Object.freeze({
   platform: null,
+  layout: null,
   label: null,
   lang: null,
   entryPoint: null,

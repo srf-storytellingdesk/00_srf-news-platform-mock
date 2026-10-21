@@ -1,0 +1,12 @@
+{
+  "brand": "rts",
+  "layout": "fullwidth",
+  "label": "RTS",
+  "lang": "fr",
+  "entryPointSelector": "[data-area-id=\"article-content\"] .rts-full-width-container .raw_html .embed-content",
+  "sourceUrl": "https://www.rts.ch/info/monde/2026/article/bikini-l-histoire-de-l-exil-face-aux-essais-nucleaires-29269618.html",
+  "assetsUrl": "/mock-assets",
+  "assetCount": 27,
+  "generatedAt": "2026-10-21",
+  "generatedBy": "00_srf-news-platform-mock"
+}

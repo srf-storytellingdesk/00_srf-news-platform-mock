@@ -17,6 +17,8 @@ export default {
     },
   },
 
+  keepScripts: [/\/_nuxt\/[^/]*\.js$/],
+
   deleteSelectors: [
     ...COMMON_DELETE_SELECTORS,
     // Drop the real article body but keep the credits line as a placeholder.

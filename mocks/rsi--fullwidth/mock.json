@@ -1,0 +1,12 @@
+{
+  "brand": "rsi",
+  "layout": "fullwidth",
+  "label": "RSI",
+  "lang": "it",
+  "entryPointSelector": ".s-article-gran-formato",
+  "sourceUrl": "https://www.rsi.ch/info/svizzera/Alptransit-un-decennio-sfrecciando-in-treno-nel-tunnel-dei-record--3772900.html",
+  "assetsUrl": "/mock-assets",
+  "assetCount": 19,
+  "generatedAt": "2026-10-21",
+  "generatedBy": "00_srf-news-platform-mock"
+}

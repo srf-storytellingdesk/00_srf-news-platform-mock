@@ -5,7 +5,7 @@
   "entryPointSelector": "[data-news-landmark=\"article-content\"]",
   "sourceUrl": "https://www.srf.ch/news/dialog/fehlende-berichterstattung-humanitaere-krisen-ohne-aufmerksamkeit",
   "assetsUrl": "/mock-assets",
-  "assetCount": 55,
-  "generatedAt": "2026-09-24",
+  "assetCount": 56,
+  "generatedAt": "2026-10-28",
   "generatedBy": "00_srf-news-platform-mock"
 }

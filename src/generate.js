@@ -13,9 +13,8 @@ import puppeteer from 'puppeteer'
 
 import { ASSETS_DIRNAME, MOCKS_DIR } from '../integration/index.js'
 import {
-  applyDomEdits,
+  applyEdits,
   inlineSingleStylesheet,
-  removeSelectors,
   scrollToBottom,
 } from './browser/page-actions.js'
 import {
@@ -36,15 +35,7 @@ const CSS_FILE_NAME = 'merged.css'
 const TIME_TO_WAIT_FOR_DYNAMIC_CONTENT = 5000
 const TIME_TO_WAIT_AFTER_SCROLL = 5000
 
-/**
- * Mount points a template fork needs, and the placeholder token each one's
- * partial is spliced in with. A brand config declares them by these keys in
- * `mounts` and never names a token itself.
- */
-const MOUNT_TOKENS = {
-  article: 'ARTICLE_CONTENT',
-  topMedia: 'TOP_MEDIA_ELEMENT',
-}
+const ACTIONS = ['remove', 'replace', 'append', 'prepend']
 
 /** Asset classes worth saving off the wire, in match order. */
 const ASSET_TYPES = [
@@ -83,15 +74,22 @@ export async function generateMock(brand) {
 
   console.log(`\n▶ ${brand}: ${config.fetchUrl}`)
 
+  if (!config.mount?.selector || !config.mount?.template) {
+    throw new Error(
+      `Brand config "${brand}" needs a \`mount\` with selector and template.`,
+    )
+  }
+
+  const { edits, partials } = await resolveEdits(config)
   const placeholders = {
     ARTICLE_TITLE: '<%= title %>',
-    ...(await readMountPartials(config)),
+    ...partials,
   }
 
   await fs.rm(assetsDir, { recursive: true, force: true })
   await fs.mkdir(assetsDir, { recursive: true })
 
-  let html = await scrapePage(config, assetsDir, fetchUrlOrigin)
+  let html = await scrapePage(config, edits, assetsDir, fetchUrlOrigin)
 
   // Rewrite same-origin URLs to the mock asset prefix, e.g.
   // /deeply/nested/srf-favicon-BRxTgjQQ.png -> /mock-assets/deeply/nested/…
@@ -134,7 +132,7 @@ export async function generateMock(brand) {
 }
 
 /** Drives the headless browser and returns the cleaned-up serialised DOM. */
-async function scrapePage(config, assetsDir, fetchUrlOrigin) {
+async function scrapePage(config, edits, assetsDir, fetchUrlOrigin) {
   const browser = await puppeteer.launch()
   try {
     const page = await browser.newPage()
@@ -166,8 +164,7 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
     await page.evaluate(scrollToBottom)
     await wait(TIME_TO_WAIT_AFTER_SCROLL) // let lazy images finish
 
-    await page.evaluate(removeSelectors, config.deleteSelectors ?? [])
-    await page.evaluate(applyDomEdits, buildDomEdits(config))
+    await page.evaluate(applyEdits, edits)
     await page.evaluate(
       inlineSingleStylesheet,
       `/${ASSETS_DIRNAME}/${CSS_FILE_NAME}`,
@@ -180,21 +177,13 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
 }
 
 async function writeManifest(outDir, brand, config, assetsDir) {
-  // The selector of the element a template fork mounts its article into, baked
-  // into mock.json so a consumer never has to re-derive it from a brand config.
-  const entryPointSelector = config.mounts?.article?.selector
-  if (!entryPointSelector) {
-    console.warn(
-      '  ! No `mounts.article` in the brand config — ' +
-        'mock.json gets no entryPointSelector',
-    )
-  }
-
   const manifest = {
     brand,
     label: config.label ?? brand.toUpperCase(),
     lang: config.lang ?? 'de',
-    entryPointSelector,
+    // The element a template fork mounts its article into, baked into
+    // mock.json so a consumer never has to re-derive it from a brand config.
+    entryPointSelector: config.mount.selector,
     sourceUrl: config.fetchUrl,
     assetsUrl: `/${ASSETS_DIRNAME}`,
     assetCount: await countFiles(assetsDir),
@@ -208,41 +197,45 @@ async function writeManifest(outDir, brand, config, assetsDir) {
 }
 
 /**
- * Flattens the brand config into one edit list for the browser: the fork's
- * mount points first, then the placeholder copy that replaces editorial text.
+ * Turns the brand config into one ordered edit list for the browser — the mods
+ * in config order, then the mount — plus the markup of every partial, keyed by
+ * the token its edit puts into the page.
  * @param {import('./brands/_shared.js').BrandConfig} config
- * @returns {{selector: string, mode: string, text: string}[]}
  */
-function buildDomEdits(config) {
-  const mounts = eachMount(config).map(([, token, mount]) => ({
-    selector: mount.selector,
-    mode: mount.mode ?? 'replace',
-    text: `{{${token}}}`,
-  }))
-  const replacements = Object.entries(config.textReplacements ?? {}).map(
-    ([selector, text]) => ({ selector, mode: 'replace', text }),
-  )
-  return [...mounts, ...replacements]
-}
+async function resolveEdits(config) {
+  const entries = [...(config.mods ?? []), config.mount]
+  const edits = []
+  const partials = {}
 
-/** `{ ARTICLE_CONTENT: '<partial markup>', … }` for every declared mount. */
-async function readMountPartials(config) {
-  const entries = await Promise.all(
-    eachMount(config).map(async ([key, token, mount]) => {
-      if (!mount.template) {
-        throw new Error(`Brand config mount "${key}" is missing a template.`)
-      }
-      return [token, await readPartial(mount.template)]
-    }),
-  )
-  return Object.fromEntries(entries)
-}
+  for (const [
+    index,
+    { selector, action = 'replace', text, template },
+  ] of entries.entries()) {
+    const where = `Brand config edit for ${JSON.stringify(selector)}`
+    if (!ACTIONS.includes(action)) {
+      throw new Error(
+        `${where} has an unknown action ${JSON.stringify(action)}.`,
+      )
+    }
+    const hasContent = (text !== undefined) + (template !== undefined)
+    if (action === 'remove' ? hasContent !== 0 : hasContent !== 1) {
+      throw new Error(
+        action === 'remove'
+          ? `${where} removes, so it takes neither text nor template.`
+          : `${where} needs exactly one of text or template.`,
+      )
+    }
 
-/** The mounts a brand actually declares, as `[key, token, mount]` triples. */
-function eachMount(config) {
-  return Object.entries(MOUNT_TOKENS)
-    .filter(([key]) => config.mounts?.[key])
-    .map(([key, token]) => [key, token, config.mounts[key]])
+    if (template !== undefined) {
+      const token = `PARTIAL_${index}`
+      partials[token] = await readPartial(template)
+      edits.push({ selector, action, text: `{{${token}}}` })
+    } else {
+      edits.push({ selector, action, text })
+    }
+  }
+
+  return { edits, partials }
 }
 
 async function loadBrandConfig(brand) {

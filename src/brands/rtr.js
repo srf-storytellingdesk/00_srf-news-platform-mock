@@ -1,4 +1,4 @@
-import { COMMON_DELETE_SELECTORS, PLACEHOLDER } from './_shared.js'
+import { COMMON_MODS, PLACEHOLDER } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -8,30 +8,20 @@ export default {
   fetchUrl:
     'https://www.rtr.ch/novitads/grischun/malauras-mesolcina-2024-tge-ha-mana-a-la-bova-e-co-pon-ins-evitar-donns-en-l-avegnir',
 
-  mounts: {
-    article: {
-      selector: '[data-news-landmark="article-content"]',
-      mode: 'replace',
-      template: 'embed_default.html',
-    },
-    topMedia: {
-      selector: 'main.articlepage article',
-      mode: 'prepend',
-      template: 'tme_default.html',
-    },
+  mount: {
+    selector: '[data-news-landmark="article-content"]',
+    template: 'embed_default.html',
   },
 
-  deleteSelectors: [
-    ...COMMON_DELETE_SELECTORS,
-    // RTR's own top media is replaced by the topMedia mount above.
-    '[data-news-landmark="topmedia"]',
+  mods: [
+    ...COMMON_MODS,
+    { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+    { selector: '.article-title__overline', text: PLACEHOLDER.overline },
+    { selector: '.article-title__text', text: PLACEHOLDER.title },
+    {
+      selector: ".article-author__name span[itemprop='name']",
+      text: PLACEHOLDER.authors,
+    },
+    { selector: '.article-lead', text: PLACEHOLDER.lead },
   ],
-
-  textReplacements: {
-    title: '{{ARTICLE_TITLE}}',
-    '.article-title__overline': PLACEHOLDER.overline,
-    '.article-title__text': PLACEHOLDER.title,
-    ".article-author__name span[itemprop='name']": PLACEHOLDER.authors,
-    '.article-lead': PLACEHOLDER.lead,
-  },
 }

@@ -3,7 +3,8 @@
  * `platform-mock` — maintenance CLI for this package.
  *
  * Nothing a consuming fork needs: forks only use the Vite plugin. This is for
- * regenerating the committed mocks when a platform redesigns its article page.
+ * regenerating the committed mocks when a platform redesigns its article page,
+ * and for previewing them.
  */
 import {
   BRANDS,
@@ -28,6 +29,9 @@ Commands
                           Defaults to "srf". Takes a screenshot afterwards
                           unless --no-screenshot is passed.
   screenshot [target]     Re-capture its screenshots/*.png only.
+  dev [brand[:layout]]    Start the preview dev server on one mock. Defaults
+                          to PLATFORM_MOCK_BRAND / PLATFORM_MOCK_LAYOUT, then
+                          srf.
   list                    Show the mocks currently in this package.
   help                    Print this text.
 
@@ -39,6 +43,7 @@ Examples
   platform-mock generate rts:fullwidth
   platform-mock generate all --no-screenshot
   platform-mock screenshot rts
+  platform-mock dev rts:fullwidth
 `
 
 const [, , command = 'help', ...rest] = process.argv
@@ -71,6 +76,22 @@ async function run(command, positional, flags) {
         resolveMock(brand, { layout }) // fail fast on an ungenerated mock
         await takeScreenshot(brand, layout)
       }
+      return
+    }
+
+    case 'dev': {
+      if (positional[0]) {
+        const [brand, layout = DEFAULT_LAYOUT] = positional[0].split(':')
+        await expandTargets(`${brand}:${layout}`) // fail fast on a typo
+        // Read by vite.config.js, which this server loads.
+        process.env.PLATFORM_MOCK_BRAND = brand
+        process.env.PLATFORM_MOCK_LAYOUT = layout
+      }
+      const { createServer } = await import('vite')
+      const server = await createServer()
+      await server.listen()
+      server.printUrls()
+      server.bindCLIShortcuts({ print: true })
       return
     }
 

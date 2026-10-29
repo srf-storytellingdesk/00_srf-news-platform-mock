@@ -21,7 +21,6 @@ import {
   applyEdits,
   inlineSingleStylesheet,
   preloadKeptScripts,
-  removeSelectors,
   scrollToBottom,
 } from './browser/page-actions.js'
 import {
@@ -153,7 +152,7 @@ export async function generateMock(brand, layout = DEFAULT_LAYOUT) {
 }
 
 /** Drives the headless browser and returns the cleaned-up serialised DOM. */
-async function scrapePage(config, assetsDir, fetchUrlOrigin) {
+async function scrapePage(config, edits, assetsDir, fetchUrlOrigin) {
   const keepScripts = config.keepScripts ?? []
   const browser = await puppeteer.launch()
   try {
@@ -189,12 +188,11 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
     await wait(TIME_TO_WAIT_AFTER_SCROLL) // let lazy images finish
 
     await page.evaluate(
-      removeSelectors,
-      config.deleteSelectors ?? [],
+      applyEdits,
+      edits,
       keepScripts.map((pattern) => [pattern.source, pattern.flags]),
     )
     await page.evaluate(preloadKeptScripts, keptScriptUrls)
-    await page.evaluate(applyDomEdits, buildDomEdits(config))
     await page.evaluate(
       inlineSingleStylesheet,
       `/${ASSETS_DIRNAME}/${CSS_FILE_NAME}`,
@@ -207,16 +205,6 @@ async function scrapePage(config, assetsDir, fetchUrlOrigin) {
 }
 
 async function writeManifest(outDir, brand, layout, config, assetsDir) {
-  // The selector of the element a template fork mounts its article into, baked
-  // into mock.json so a consumer never has to re-derive it from a brand config.
-  const entryPointSelector = config.mounts?.article?.selector
-  if (!entryPointSelector) {
-    console.warn(
-      '  ! No `mounts.article` in the brand config — ' +
-        'mock.json gets no entryPointSelector',
-    )
-  }
-
   const manifest = {
     brand,
     layout,
@@ -291,8 +279,9 @@ export async function brandLayouts(brand) {
 
 /**
  * The brand config with one layout's overrides applied. Top-level keys replace
- * the base ones; `mounts` merges per mount, and a mount set to `null` is
- * dropped — e.g. a layout with no top-media slot.
+ * the base ones — so a layout that sets `mods` restates every mod it needs,
+ * `COMMON_REMOVAL_MODS` included — while `mount` merges key by key, so a
+ * layout can swap just the selector or the template.
  * @param {import('./brands/_shared.js').BrandConfig} config
  * @param {string} layout
  * @returns {import('./brands/_shared.js').BrandConfig}
@@ -309,14 +298,11 @@ export function applyLayout(config, layout) {
     throw new Error(`Invalid layout key: ${JSON.stringify(layout)}`)
   }
 
-  const { mounts = {}, ...overrides } = layouts[layout]
-  const mergedMounts = Object.entries({ ...base.mounts, ...mounts }).filter(
-    ([, mount]) => mount,
-  )
+  const { mount, ...overrides } = layouts[layout]
   return {
     ...base,
     ...overrides,
-    mounts: Object.fromEntries(mergedMounts),
+    mount: { ...base.mount, ...mount },
   }
 }
 

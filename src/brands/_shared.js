@@ -60,4 +60,11 @@ export const PLACEHOLDER = {
  * @property {Mod[]} mods
  *   Edits applied in order before the mount: strip what needs a live backend
  *   and swap editorial copy for placeholders.
+ * @property {RegExp[]} [keepScripts]
+ *   Absolute URLs of platform scripts the mock keeps, even though a mod
+ *   removes `script`.
+ * @property {Record<string, Partial<BrandConfig>>} [layouts]
+ *   Further mocks scraped from other article types, written to
+ *   `mocks/<brand>--<layout>/`. Top-level keys replace the base ones — a layout
+ *   that sets `mods` restates them all — while `mount` merges key by key.
  */

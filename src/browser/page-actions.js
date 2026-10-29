@@ -23,31 +23,6 @@ export async function scrollToBottom() {
 }
 
 /**
- * Removes every element matching any of the given selectors, except external
- * scripts whose absolute `src` matches one of `keepScripts`.
- *
- * @param {string[]} selectors
- * @param {[source: string, flags: string][]} [keepScripts]
- *   Allowlist patterns as `[RegExp#source, RegExp#flags]` — a RegExp does not
- *   survive serialisation into the page.
- */
-export function removeSelectors(selectors, keepScripts = []) {
-  const patterns = keepScripts.map(
-    ([source, flags]) => new RegExp(source, flags),
-  )
-  const kept = new Set(
-    [...document.querySelectorAll('script[src]')].filter((el) =>
-      patterns.some((pattern) => pattern.test(el.src)),
-    ),
-  )
-  selectors.forEach((selector) => {
-    document.querySelectorAll(selector).forEach((el) => {
-      if (!kept.has(el)) el.remove()
-    })
-  })
-}
-
-/**
  * Preloads every kept script the page fetched that no `<script src>` loads
  * directly — e.g. the chunks a Nuxt entry imports — so the mock pulls in the
  * whole allowlisted bundle, not just its entry points.
@@ -71,14 +46,28 @@ export function preloadKeptScripts(urls) {
 
 /**
  * Applies the brand config's DOM edits: splices the template's mount points in
- * and swaps real editorial copy for placeholder text.
+ * and swaps real editorial copy for placeholder text. A `remove` never drops an
+ * external script whose absolute `src` matches one of `keepScripts`.
  *
  * @param {{selector: string, action: 'remove'|'replace'|'append'|'prepend', text?: string}[]} edits
+ * @param {[source: string, flags: string][]} [keepScripts]
+ *   Allowlist patterns as `[RegExp#source, RegExp#flags]` — a RegExp does not
+ *   survive serialisation into the page.
  */
-export function applyEdits(edits) {
+export function applyEdits(edits, keepScripts = []) {
+  const patterns = keepScripts.map(
+    ([source, flags]) => new RegExp(source, flags),
+  )
+  const kept = new Set(
+    [...document.querySelectorAll('script[src]')].filter((el) =>
+      patterns.some((pattern) => pattern.test(el.src)),
+    ),
+  )
   for (const { selector, action, text } of edits) {
     if (action === 'remove') {
-      document.querySelectorAll(selector).forEach((el) => el.remove())
+      document.querySelectorAll(selector).forEach((el) => {
+        if (!kept.has(el)) el.remove()
+      })
       continue
     }
     const el = document.querySelector(selector)

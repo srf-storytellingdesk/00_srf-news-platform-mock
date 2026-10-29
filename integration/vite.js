@@ -296,8 +296,8 @@ function transformMockHtml(html, { entry, mountId, title }) {
   let out = html
   if (entry) {
     // Only the widget's own script, which the embed partials always ship as
-    // `/src/index.jsx`. Platform module scripts kept via `keepScripts` (RSI's
-    // Nuxt bundle) must keep their src.
+    // `/src/index.jsx`. Platform scripts kept via `keepScripts` (RTS's
+    // header and navigation bundle) must keep their src.
     out = out.replace(
       /(<script\b[^>]*\bsrc=["'])\/src\/index\.jsx(["'])/gi,
       (_match, before, after) => `${before}${entry}${after}`,

@@ -304,12 +304,12 @@ describe('platformMock vite plugin', () => {
   })
 
   it('leaves kept platform module scripts alone when rewriting the entry', () => {
-    platformMock({ brand: 'rsi', entry: '/preview/main.jsx' }).configResolved(
+    platformMock({ brand: 'rts', entry: '/preview/main.jsx' }).configResolved(
       fakeConfig('serve'),
     )
 
     const html = indexHtml()
-    expect(html).toContain('src="/mock-assets/_nuxt/')
+    expect(html).toContain('src="/mock-assets/hbv7/static/js/rts-')
     expect(html.match(/\/preview\/main\.jsx/g)).toHaveLength(1)
   })
 
@@ -385,40 +385,41 @@ describe('platformMock vite plugin', () => {
 describe('applyLayout', () => {
   const base = {
     fetchUrl: 'https://example.org/article',
-    mounts: {
-      article: { selector: '.body', template: 'a.html' },
-      topMedia: { selector: 'article', mode: 'prepend', template: 't.html' },
-    },
-    textReplacements: { title: 'T', '.lead': 'L' },
+    mount: { selector: '.body', action: 'append', template: 'a.html' },
+    mods: [{ selector: 'script', action: 'remove' }],
     layouts: {
       wide: {
         fetchUrl: 'https://example.org/wide',
-        mounts: { article: { selector: '.wide', template: 'w.html' } },
+        mount: { selector: '.wide', action: 'replace' },
+        mods: [{ selector: 'title', text: 'T' }],
       },
-      bare: { mounts: { topMedia: null } },
+      bare: {},
     },
   }
 
   it('returns the base config, minus its layouts, for the default layout', () => {
     const config = applyLayout(base, 'default')
     expect(config).not.toHaveProperty('layouts')
-    expect(config.mounts).toEqual(base.mounts)
+    expect(config.mount).toEqual(base.mount)
     expect(config.fetchUrl).toBe(base.fetchUrl)
   })
 
-  it('replaces top-level keys and merges mounts per mount', () => {
+  it('replaces top-level keys and merges the mount', () => {
     const config = applyLayout(base, 'wide')
     expect(config.fetchUrl).toBe('https://example.org/wide')
-    expect(config.mounts.article.selector).toBe('.wide')
-    expect(config.mounts.topMedia).toEqual(base.mounts.topMedia)
-    expect(config.textReplacements).toEqual(base.textReplacements)
+    expect(config.mount).toEqual({
+      selector: '.wide',
+      action: 'replace',
+      template: 'a.html',
+    })
+    expect(config.mods).toEqual(base.layouts.wide.mods)
     expect(config).not.toHaveProperty('layouts')
   })
 
-  it('drops a mount a layout sets to null', () => {
-    expect(applyLayout(base, 'bare').mounts).toEqual({
-      article: base.mounts.article,
-    })
+  it('keeps everything a layout does not override', () => {
+    const config = applyLayout(base, 'bare')
+    expect(config.mount).toEqual(base.mount)
+    expect(config.mods).toEqual(base.mods)
   })
 
   it('names the known layouts for an unknown one', () => {

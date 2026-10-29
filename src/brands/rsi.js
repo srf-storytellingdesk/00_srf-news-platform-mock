@@ -1,4 +1,4 @@
-import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -29,14 +29,14 @@ export default {
     fullwidth: {
       fetchUrl:
         'https://www.rsi.ch/info/svizzera/Alptransit-un-decennio-sfrecciando-in-treno-nel-tunnel-dei-record--3772900.html',
-      mounts: {
+      mount: {
         selector: '.s-article-gran-formato',
         action: 'replace',
-        template: 'embed_rsi.html',
       },
-      mods: {
-        title: '{{ARTICLE_TITLE}}',
-      },
+      mods: [
+        ...COMMON_REMOVAL_MODS,
+        { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+      ],
     },
   },
 }

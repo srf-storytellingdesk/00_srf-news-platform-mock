@@ -242,7 +242,7 @@ dates. `screenshots/<brand>.png` is a full-page reference render of each, and
 ```sh
 pnpm install
 
-pnpm dev                  # preview a mock (PLATFORM_MOCK_BRAND=rts pnpm dev)
+pnpm dev                  # preview a mock (pnpm dev rts, pnpm dev rts:fullwidth)
 pnpm brands               # list the generated mocks
 pnpm mock srf             # re-scrape one brand (every layout) into mocks/
 pnpm mock rts:fullwidth   # re-scrape one layout into mocks/rts--fullwidth/
@@ -356,8 +356,9 @@ No editorial text survives step 3 — the mocks carry chrome and layout only.
    real article in that layout. Don't derive one layout from another's page:
    `merged.css` is purged to the classes the scraped page uses, so the other
    layout's rules are already gone.
-2. Override only what differs. Top-level keys replace the brand's; `mounts`
-   merges per mount, and `topMedia: null` drops a slot the layout doesn't have.
+2. Override only what differs. Top-level keys replace the brand's — a layout
+   that sets `mods` restates them all, `...COMMON_REMOVAL_MODS` included — while
+   `mount` merges key by key, so a layout can swap just its selector.
 3. `pnpm mock <brand>:<layout>`, check the screenshot, add a row to the
    [layouts table](#layouts), commit.
 

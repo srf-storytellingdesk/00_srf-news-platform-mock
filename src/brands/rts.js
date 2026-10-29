@@ -34,7 +34,10 @@ export default {
         action: 'replace',
         template: 'embed_rts_fullwidth.html',
       },
-      mods: [{ selector: 'title', text: '{{ARTICLE_TITLE}}' }],
+      mods: [
+        ...COMMON_REMOVAL_MODS,
+        { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+      ],
     },
   },
 }

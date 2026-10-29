@@ -3,9 +3,14 @@
   "label": "RTS",
   "lang": "fr",
   "entryPointSelector": "[data-area-id=\"article-content\"] .article-body",
-  "sourceUrl": "https://www.rts.ch/info/regions/vaud/2026/article/gale-dans-la-broye-les-cas-confirmes-sont-rares-dans-le-canton-de-vaud-29283692.html",
+  "sourceUrl": "https://www.rts.ch/info/monde/2026/article/comment-reconstruire-le-nid-d-aigle-d-hitler-apres-l-incendie-29398695.html",
   "assetsUrl": "/mock-assets",
+<<<<<<< HEAD
   "assetCount": 30,
   "generatedAt": "2026-10-21",
+=======
+  "assetCount": 26,
+  "generatedAt": "2026-10-29",
+>>>>>>> main
   "generatedBy": "00_srf-news-platform-mock"
 }

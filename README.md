@@ -331,17 +331,15 @@ screenshots/            Reference renders
    lazy media loads.
 2. Every same-origin CSS, image and font response is saved to
    `mocks/<brand>/mock-assets/`.
-3. `deleteSelectors` strips scripts, consent tooling and anything else that
-   needs a live backend.
-4. `mounts` splices the partials into the page — the `article` mount a template
-   fork renders into, and the optional `topMedia` slot — and `textReplacements`
-   swaps the editorial copy for placeholders. `mounts.article.selector` is what
-   `mock.json` records as `entryPointSelector`.
+3. `mods` run in order: they strip scripts, consent tooling and anything else
+   that needs a live backend, and swap the editorial copy for placeholders.
+4. `mount` splices the article partial into the element a template fork renders
+   into. `mount.selector` is what `mock.json` records as `entryPointSelector`.
 5. All stylesheets are merged into one `merged.css`, asset URLs are rewritten to
    the `/mock-assets/` prefix, and referenced fonts are fetched.
 6. The HTML is formatted with Prettier and written together with `mock.json`.
 
-No editorial text survives step 4 — the mocks carry chrome and layout only.
+No editorial text survives step 3 — the mocks carry chrome and layout only.
 
 ### Adding a brand
 
@@ -349,7 +347,7 @@ No editorial text survives step 4 — the mocks carry chrome and layout only.
    `lang` and the selectors.
 2. Add the key to `BRANDS` in [integration/index.js](integration/index.js).
 3. If the platform's article markup differs, add a partial in `src/partials/`
-   and point `mounts.article.template` at it.
+   and point `mount.template` at it.
 4. `pnpm mock <key>`, check the screenshot, commit.
 
 ### Adding a layout

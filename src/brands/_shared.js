@@ -7,16 +7,12 @@
  * Elements that must go on every platform: anything that needs JavaScript, a
  * consent layer or a live backend to make sense in an offline mock.
  */
-export const COMMON_MODS = [
+export const COMMON_REMOVAL_MODS = [
   'script',
   'meta:not([charset]):not([name=viewport])',
   'link[as="script"]',
-  'link[crossorigin="use-credentials"]',
-  '[data-js-plugin="dynamic-promo-banner"]',
   "[style^='display: none']",
   'noscript',
-  '#config__js',
-  '[data-news-landmark="topmedia"]',
 ].map((selector) => ({ selector, action: 'remove' }))
 
 /**

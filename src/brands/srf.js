@@ -1,4 +1,4 @@
-import { COMMON_MODS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -14,7 +14,11 @@ export default {
   },
 
   mods: [
-    ...COMMON_MODS,
+    ...COMMON_REMOVAL_MODS,
+    { selector: 'link[crossorigin="use-credentials"]', action: 'remove' },
+    { selector: '[data-js-plugin="dynamic-promo-banner"]', action: 'remove' },
+    { selector: '#config__js', action: 'remove' },
+    { selector: '[data-news-landmark="topmedia"]', action: 'remove' },
     { selector: 'title', text: '{{ARTICLE_TITLE}}' },
     { selector: '.article-title__overline', text: PLACEHOLDER.overline },
     { selector: '.article-title__text', text: PLACEHOLDER.title },

@@ -1,4 +1,4 @@
-import { COMMON_MODS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -15,8 +15,7 @@ export default {
   },
 
   mods: [
-    ...COMMON_MODS,
-    // Drop the real article body but keep the meta rows around it.
+    ...COMMON_REMOVAL_MODS,
     {
       selector:
         'main article .article-main > *:not(.article-meta-list):not(.article-meta-row)',

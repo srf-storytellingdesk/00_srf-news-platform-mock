@@ -1,4 +1,4 @@
-import { COMMON_MODS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -15,8 +15,7 @@ export default {
   },
 
   mods: [
-    ...COMMON_MODS,
-    // Drop the real article body but keep the credits line as a placeholder.
+    ...COMMON_REMOVAL_MODS,
     {
       selector: '.c-article-body .c-article-body_item:not(.c-article-credits)',
       action: 'remove',

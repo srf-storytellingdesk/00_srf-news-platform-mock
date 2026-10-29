@@ -241,10 +241,17 @@ with the day's date. The tag is the only thing forks depend on, so a push that
 changes `mocks/` without one is invisible to them.
 
 ```sh
+pnpm release              # scrape all five, screenshot, commit, tag today, push
+pnpm release --tag-only   # tag and push current HEAD without rescraping
+```
+
+`scripts/release.sh` does the equivalent of:
+
+```sh
 pnpm mock:all                       # scrape all five, screenshot each
 git add mocks screenshots
 git commit -m "regenerate mocks"
-git tag 2026-09-02                  # today, YYYY-MM-DD
+git tag 2026-09-02                  # today, YYYY-MM-DD (counter if taken)
 git push origin main 2026-09-02
 ```
 

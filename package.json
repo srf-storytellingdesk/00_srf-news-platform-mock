@@ -39,6 +39,7 @@
     "mock": "node src/cli.js generate",
     "mock:all": "node src/cli.js generate all",
     "screenshot": "node src/cli.js screenshot",
+    "release": "bash scripts/release.sh",
     "brands": "node src/cli.js list",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

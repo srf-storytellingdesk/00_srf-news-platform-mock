@@ -7,16 +7,13 @@
  * Elements that must go on every platform: anything that needs JavaScript, a
  * consent layer or a live backend to make sense in an offline mock.
  */
-export const COMMON_DELETE_SELECTORS = [
+export const COMMON_REMOVAL_MODS = [
   'script',
   'meta:not([charset]):not([name=viewport])',
   'link[as="script"]',
-  'link[crossorigin="use-credentials"]',
-  '[data-js-plugin="dynamic-promo-banner"]',
   "[style^='display: none']",
   'noscript',
-  '#config__js',
-]
+].map((selector) => ({ selector, action: 'remove' }))
 
 /**
  * Filler copy that replaces the real article text, so no mock ever ships
@@ -33,26 +30,34 @@ export const PLACEHOLDER = {
 
 /**
  * @typedef {object} Mount
- * @property {string} selector Element a template fork mounts into.
- * @property {'replace'|'append'|'prepend'} [mode]
+ * @property {string} selector
+ *   Element a template fork mounts its article into. Baked into `mock.json`
+ *   as `entryPointSelector`.
+ * @property {'replace'|'append'|'prepend'} [action]
  *   How the partial is spliced in relative to that element's content.
  *   Defaults to `replace`.
  * @property {string} template Partial in `src/partials/` to splice in.
  */
 
 /**
+ * One edit to the scraped page. `remove` drops every match; the other actions
+ * put content into the first match — `text` as a literal string, or the
+ * partial named by `template`.
+ * @typedef {object} Mod
+ * @property {string} selector
+ * @property {'remove'|'replace'|'append'|'prepend'} [action]
+ *   Defaults to `replace`.
+ * @property {string} [text]     Inline content.
+ * @property {string} [template] Partial in `src/partials/`.
+ */
+
+/**
  * @typedef {object} BrandConfig
- * @property {string} label      Human-readable platform name.
- * @property {string} lang       Value for the mock's `<html lang>`.
- * @property {string} fetchUrl   Article page to scrape.
- * @property {object} mounts     Mount points a template fork needs.
- * @property {Mount} mounts.article
- *   The article body. Its selector is the mock's entry point and is baked into
- *   `mock.json` as `entryPointSelector`.
- * @property {Mount} [mounts.topMedia]
- *   The top-media slot. Omit on platforms that have none.
- * @property {string[]} deleteSelectors Elements to remove.
- * @property {Record<string,string>} textReplacements
- *   `selector -> text`; replaces the element's text content. Placeholder
- *   editorial copy only — mount points go in `mounts`.
+ * @property {string} label    Human-readable platform name.
+ * @property {string} lang     Value for the mock's `<html lang>`.
+ * @property {string} fetchUrl Article page to scrape.
+ * @property {Mount} mount     Where a template fork mounts its article.
+ * @property {Mod[]} mods
+ *   Edits applied in order before the mount: strip what needs a live backend
+ *   and swap editorial copy for placeholders.
  */

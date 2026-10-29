@@ -22,34 +22,24 @@ export async function scrollToBottom() {
   })
 }
 
-/** Removes every element matching any of the given selectors. */
-export function removeSelectors(selectors) {
-  selectors.forEach((selector) => {
-    document.querySelectorAll(selector).forEach((el) => el.remove())
-  })
-}
-
 /**
- * Applies the brand config's DOM edits: splices the template's mount points in
- * and swaps real editorial copy for placeholder text.
+ * Applies the brand config's edits in order. Content goes in as text — a
+ * partial arrives as a `{{TOKEN}}` the generator swaps for its markup after
+ * serialisation.
  *
- * @param {{selector: string, mode: 'replace'|'append'|'prepend', text: string}[]} edits
+ * @param {{selector: string, action: 'remove'|'replace'|'append'|'prepend', text?: string}[]} edits
  */
-export function applyDomEdits(edits) {
-  const isReplace = (edit) => edit.mode === 'replace'
-
-  // Replacements run first, so a replacement on an ancestor can never wipe an
-  // insert already made into it.
-  const passes = [edits.filter(isReplace), edits.filter((e) => !isReplace(e))]
-
-  for (const pass of passes) {
-    for (const { selector, mode, text } of pass) {
-      const el = document.querySelector(selector)
-      if (!el) continue
-      if (mode === 'replace') el.textContent = text
-      else if (mode === 'prepend') el.prepend(document.createTextNode(text))
-      else el.append(document.createTextNode(text))
+export function applyEdits(edits) {
+  for (const { selector, action, text } of edits) {
+    if (action === 'remove') {
+      document.querySelectorAll(selector).forEach((el) => el.remove())
+      continue
     }
+    const el = document.querySelector(selector)
+    if (!el) continue
+    if (action === 'replace') el.textContent = text
+    else if (action === 'prepend') el.prepend(document.createTextNode(text))
+    else el.append(document.createTextNode(text))
   }
 }
 

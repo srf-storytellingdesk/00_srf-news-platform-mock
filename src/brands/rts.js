@@ -1,4 +1,4 @@
-import { COMMON_DELETE_SELECTORS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -6,27 +6,18 @@ export default {
   lang: 'fr',
 
   fetchUrl:
-    'https://www.rts.ch/info/regions/vaud/2026/article/gale-dans-la-broye-les-cas-confirmes-sont-rares-dans-le-canton-de-vaud-29283692.html',
+    'https://www.rts.ch/info/monde/2026/article/comment-reconstruire-le-nid-d-aigle-d-hitler-apres-l-incendie-29398695.html',
 
-  mounts: {
-    article: {
-      selector: '[data-area-id="article-content"] .article-body',
-      mode: 'replace',
-      template: 'embed_rts.html',
-    },
-    topMedia: {
-      selector: "main[data-zone-id='content'] article",
-      mode: 'prepend',
-      template: 'tme_default.html',
-    },
+  mount: {
+    selector: '[data-area-id="article-content"] .article-body',
+    template: 'embed_rts.html',
   },
 
-  deleteSelectors: [...COMMON_DELETE_SELECTORS],
-
-  textReplacements: {
-    title: '{{ARTICLE_TITLE}}',
-    '.article-category': PLACEHOLDER.overline,
-    '.article-title': PLACEHOLDER.title,
-    '.article-lead': PLACEHOLDER.lead,
-  },
+  mods: [
+    ...COMMON_REMOVAL_MODS,
+    { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+    { selector: '.article-category', text: PLACEHOLDER.overline },
+    { selector: '.article-title', text: PLACEHOLDER.title },
+    { selector: '.article-lead', text: PLACEHOLDER.lead },
+  ],
 }

@@ -100,5 +100,5 @@ export function mockVariables(mock) {
  */
 export function mockVariablesScript(mock) {
   const json = JSON.stringify(mockVariables(mock))
-  return `<script type="application/json" data-platform-mock>${json}</script>`
+  return `<script type="application/json" data-platform>${json}</script>`
 }

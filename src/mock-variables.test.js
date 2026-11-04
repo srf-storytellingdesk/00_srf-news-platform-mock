@@ -168,7 +168,7 @@ describe('what the plugin writes', () => {
     const html = generate({}, 'serve')
     const head = html.slice(html.indexOf('<head'), html.indexOf('</head>'))
 
-    expect(head).toContain('data-platform-mock')
+    expect(head).toContain('data-platform')
     expect(head).toContain('"platform":"rsi"')
   })
 

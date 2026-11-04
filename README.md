@@ -185,7 +185,7 @@ test fails if a variable is missing from the table above or from the types.
 The plugin writes them into the `<head>` of the document it already generates:
 
 ```html
-<script type="application/json" data-platform-mock>
+<script type="application/json" data-platform>
   {
     "platform": "srf",
     "layout": "default",

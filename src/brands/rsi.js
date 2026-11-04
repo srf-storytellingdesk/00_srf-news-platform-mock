@@ -16,13 +16,14 @@ export default {
 
   header: {
     selector:
-      'article.s-article header, article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))',
+      'article.s-article header:has(.c-article-header), article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))',
     authorSelector: 'article.s-article section .c-article-credits',
     dateSelector: 'article.s-article .infobarElement > span',
   },
 
   mods: [
     ...COMMON_REMOVAL_MODS,
+    { selector: 'title', text: '{{ARTICLE_TITLE}}' },
     {
       selector: '.c-article-body .c-article-body_item:not(.c-article-credits)',
       action: 'remove',

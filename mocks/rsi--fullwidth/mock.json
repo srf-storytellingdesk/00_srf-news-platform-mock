@@ -4,7 +4,7 @@
   "label": "RSI",
   "lang": "it",
   "entryPointSelector": ".s-article-gran-formato",
-  "headerSelector": "article.s-article header, article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))",
+  "headerSelector": "article.s-article header:has(.c-article-header), article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))",
   "headerAuthorSelector": "article.s-article section .c-article-credits",
   "headerDateSelector": "article.s-article .infobarElement > span",
   "sourceUrl": "https://www.rsi.ch/info/svizzera/Alptransit-un-decennio-sfrecciando-in-treno-nel-tunnel-dei-record--3772900.html",

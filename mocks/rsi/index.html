@@ -170,7 +170,7 @@
                           >
                             <!----><!---->
                             <use
-                              href="/mock-assets/_nuxt/meteolight.CJbjf8h9.svg#1"
+                              href="/mock-assets/_nuxt/meteolight.CJbjf8h9.svg#14"
                             ></use></svg
                           ><!--]--><!--]--></span
                         ><!----><!----></span
@@ -241,28 +241,10 @@
                   <nav
                     class="md-down:-mx-margin-screen-sm sm-down:-mx-margin-screen-xs pt-4 pb-2"
                   >
-                    <div
-                      class="c-navigation w-full block relative after:[u-content-empty] after:absolute after:top-0 after:w-20 after:md:w-16 after:h-full after:from-neutral-100 after:md:via-neutral-100 after:md:to-neutral-100/0 after:bg-gradient-to-l after:pointer-events-none after:right-0"
-                    >
-                      <!----><button
-                        class="el-link c-button group rounded-full outline-offset-2 cursor-pointer md-down:hidden absolute top-1/2 right-0 z-10 -translate-y-[60%] c-button group rounded-full outline-offset-2 cursor-pointer md-down:hidden absolute top-1/2 right-0 z-10 -translate-y-[60%]"
-                        aria-label="Scorri a destra"
-                      >
-                        <span
-                          class="el-label inline-flex basis-auto u-transition-text gap-2 min-h-8.5 min-w-8.5 h-8.5 text-neutral-900 dark:text-neutral-100 hover:text-rsi hover:dark:text-rsi-dark-mode bg-transparent hover:bg-rsi/5 hover:dark:bg-white/5 text-sm leading-snug rounded-full p-2 border border-neutral-900/15 dark:border-white/50 hover:border-rsi hover:dark:border-white false text-left cursor-pointer select-none justify-center items-center"
-                          data-v-wave-boundary="true"
-                          ><!----><!----><span class="leading-inherit"
-                            ><svg
-                              class="icons w-3.5 h-3.5 fill-current stroke-current leading-inherit"
-                            >
-                              <!----><!---->
-                              <use
-                                href="/mock-assets/_nuxt/icons.CKFRVoLE.svg#chevron-right"
-                              ></use></svg></span
-                        ></span>
-                      </button>
+                    <div class="c-navigation w-full block relative">
+                      <!----><!---->
                       <ul
-                        class="c-list flex flex-row gap-7 flex snap-x overflow-x-auto overflow-y-hidden u-hide-scrollbar g-px-indent"
+                        class="c-list flex flex-row gap-7 flex snap-x overflow-x-auto overflow-y-hidden u-hide-scrollbar g-px-indent justify-center"
                       >
                         <!--[--><!--[-->
                         <li class="c-list-item whitespace-nowrap">
@@ -422,7 +404,7 @@
                 >
                   <div
                     class="c-sticky-options print:hidden sticky h-0 z-2 md-down:left-full s-article-sticky-option pointer-events-none"
-                    style="--windowH: 600px"
+                    style="--windowH: 900px"
                     data-v-986aeb46=""
                   >
                     <div
@@ -6952,5 +6934,69 @@
         <!----><!---->
       </div>
     </nav>
+    <!--
+  Scroll behaviour of the RSI header, rebuilt without Nuxt. Mirrors the live
+  composables useInitialScroll and useStickyHeader: the page scrolls inside
+  #root, starts scrolled past the header's navigation band, collapses the
+  header on any scroll down and expands it again on a fast scroll up.
+-->
+    <script>
+      ;(() => {
+        const root = document.getElementById("root")
+        const header = document.getElementById("__header")
+        const bar = header?.firstElementChild
+        const container = bar?.firstElementChild
+        if (!root || !container) return
+
+        const THRESHOLD = 24 // px scrolled before the header counts as sticked
+        const SPEED_THRESHOLD = 1 // px/ms of upward scroll that expands it
+        const PADDING_Y = parseFloat(bar.style.paddingTop) * 2
+        const TOP_HEADER = parseFloat(header.style.height)
+        const BODY_HEADER = parseFloat(header.style.marginBottom)
+        // 117 for an article with a section navigation, +14 on a gran formato.
+        const INITIAL_SCROLL =
+          117 + (document.querySelector(".s-article-gran-formato") ? 14 : 0)
+
+        let expanded = Boolean(location.hash)
+        let lastY = root.scrollTop
+        let lastTime = performance.now()
+
+        const render = () => {
+          const sticked = !expanded || root.scrollTop > THRESHOLD
+          bar.classList.toggle("shadow-floating", sticked)
+          bar.classList.toggle("border-neutral-200", sticked)
+          bar.classList.toggle("border-transparent", !sticked)
+          container.classList.toggle("overflow-hidden", !expanded)
+          container.style.maxHeight = `${
+            expanded ? TOP_HEADER + BODY_HEADER : TOP_HEADER - PADDING_Y
+          }px`
+        }
+
+        root.addEventListener(
+          "scroll",
+          () => {
+            const y = root.scrollTop
+            const now = performance.now()
+            const delta = y - lastY
+            const elapsed = now - lastTime
+            lastY = y
+            lastTime = now
+
+            const sticked = !expanded || y > THRESHOLD
+            if (!sticked) expanded = true
+            else if (delta > 0) expanded = false
+            else if (-delta / elapsed > SPEED_THRESHOLD) expanded = true
+            render()
+          },
+          { passive: true },
+        )
+
+        if (!expanded) {
+          root.scrollTop = INITIAL_SCROLL
+          lastY = root.scrollTop
+        }
+        render()
+      })()
+    </script>
   </body>
 </html>

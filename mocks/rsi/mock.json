@@ -4,9 +4,12 @@
   "label": "RSI",
   "lang": "it",
   "entryPointSelector": ".c-article-body",
+  "headerSelector": "article.s-article header",
+  "headerAuthorSelector": "article.s-article section .c-article-credits",
+  "headerDateSelector": "article.s-article .infobarElement > span",
   "sourceUrl": "https://www.rsi.ch/info/natura-e-animali/Morso-di-vipera-quanto-%C3%A8-davvero-pericoloso-in-Svizzera--3837425.html",
   "assetsUrl": "/mock-assets",
   "assetCount": 22,
-  "generatedAt": "2026-10-29",
+  "generatedAt": "2026-11-04",
   "generatedBy": "00_srf-news-platform-mock"
 }

@@ -16,7 +16,7 @@
  * The element the variables travel in. A JSON block rather than attributes:
  * nothing to escape, nothing executes, and it reads as itself in devtools.
  */
-export const MOCK_VARIABLES_SELECTOR = 'script[data-platform-mock]'
+export const MOCK_VARIABLES_SELECTOR = 'script[data-platform]'
 
 /**
  * Every variable a fork can read, in the order they are documented.

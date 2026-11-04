@@ -16,7 +16,7 @@ export default {
 
   header: {
     selector:
-      'article.s-article header, article.s-article .container > *:not(:has(.c-article-body))',
+      'article.s-article header, article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))',
     authorSelector: 'article.s-article section .c-article-credits',
     dateSelector: 'article.s-article .infobarElement > span',
   },

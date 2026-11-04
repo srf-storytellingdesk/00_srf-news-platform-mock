@@ -4,7 +4,7 @@
   "label": "RTR",
   "lang": "rm",
   "entryPointSelector": "[data-news-landmark=\"article-content\"]",
-  "headerSelector": "[data-area-id=\"article-header\"], [data-area-id=\"article-content\"] .article-part.article-lead",
+  "headerSelector": "[data-news-landmark=article-header]",
   "headerAuthorSelector": "[data-news-landmark=article-author-name]",
   "headerDateSelector": "[data-news-landmark=article-author-date]",
   "sourceUrl": "https://www.rtr.ch/novitads/grischun/malauras-mesolcina-2024-tge-ha-mana-a-la-bova-e-co-pon-ins-evitar-donns-en-l-avegnir",

@@ -5,7 +5,7 @@
   "lang": "fr",
   "entryPointSelector": "[data-area-id=\"article-content\"] .article-body",
   "headerSelector": "[data-area-id=\"article-header\"], [data-area-id=\"article-content\"] .article-part.article-lead",
-  "headerAuthorSelector": "[data-area-id=\"article-content\"] .article-body p.sources",
+  "headerAuthorSelector": "[data-area-id=\"article-content\"] [data-area-id=\"article-content\"] .article-body.article-body p.sources",
   "headerDateSelector": "[data-area-id=\"article-header\"] .article-date time",
   "sourceUrl": "https://www.rts.ch/info/monde/2026/article/comment-reconstruire-le-nid-d-aigle-d-hitler-apres-l-incendie-29398695.html",
   "assetsUrl": "/mock-assets",

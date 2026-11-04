@@ -58,22 +58,6 @@ h1:where(.wp-block-heading).has-background,h2:where(.wp-block-heading).has-backg
         .swiss-parallax-content-block .unslider { overflow: visible !important; }
         .swiss-parallax-content-block .unslider-wrap { display: flex !important; }
 
-.brv-signup {
-	border-top: 2px solid #d41f42;
-}
-
-.swiss-close-button {
-	transform: scale(2);
-	border-radius: 50%;
-	color: #000;
-	position: absolute!important;
-    top: 15px;
-    right: 15px!important;
-}
-	
-
-
-
 @font-face{font-family:"SWI Aktiv Grotesk";font-style:normal;font-weight:400;font-display:swap;src:url('../mock-assets/eng/wp-content/themes/swissinfo-theme/assets/aktivgrotesk_w_rg-woff2-data.woff2') format('woff2');}
 @font-face{font-family:"SWI Aktiv Grotesk";font-style:normal;font-weight:300;font-display:swap;src:url('../mock-assets/eng/wp-content/themes/swissinfo-theme/assets/aktivgrotesk_w_lt-woff2-data.woff2') format('woff2');}
 @font-face{font-family:"SWI Noto Serif";font-style:normal;font-weight:400;font-display:swap;src:url('../mock-assets/eng/wp-content/themes/swissinfo-theme/assets/noto-serif-v20-latin_cyrillic-regular-woff2-data.woff2') format('woff2');}

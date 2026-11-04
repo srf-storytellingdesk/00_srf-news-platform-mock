@@ -12,10 +12,10 @@ import puppeteer from 'puppeteer'
 
 import { DEFAULT_LAYOUT, mockDirName } from '../integration/index.js'
 import { unlockPageScroll } from './browser/page-actions.js'
+import { VIEWPORT } from './generate.js'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SCREENSHOTS_DIR = path.join(PACKAGE_ROOT, 'screenshots')
-const VIEWPORT_WIDTH = 1280
 const LOADING_SCREEN = '[data-news-landmark="news-loading-screen"]'
 
 /**
@@ -51,20 +51,16 @@ export async function takeScreenshot(brand, layout = DEFAULT_LAYOUT) {
 
   try {
     const page = await browser.newPage()
-    await page.setViewport({
-      width: VIEWPORT_WIDTH,
-      height: 900,
-      deviceScaleFactor: 1,
-    })
+    await page.setViewport(VIEWPORT)
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
     await page.waitForSelector(LOADING_SCREEN, { hidden: true, timeout: 30000 })
 
     const contentHeight = await page.evaluate(unlockPageScroll, LOADING_SCREEN)
-    await page.setViewport({ width: VIEWPORT_WIDTH, height: contentHeight })
+    await page.setViewport({ ...VIEWPORT, height: contentHeight })
     await page.screenshot({ path: outPath })
 
     console.log(
-      `  ✓ screenshots/${fileName} (${VIEWPORT_WIDTH}×${contentHeight})`,
+      `  ✓ screenshots/${fileName} (${VIEWPORT.width}×${contentHeight})`,
     )
     return outPath
   } finally {

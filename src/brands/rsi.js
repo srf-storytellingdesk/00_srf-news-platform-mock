@@ -14,15 +14,21 @@ export default {
     template: 'embed_rsi.html',
   },
 
+  header: {
+    selector: 'article.s-article header',
+    authorSelector: 'article.s-article section .c-article-credits',
+    dateSelector: 'article.s-article .infobarElement > span',
+  },
+
   mods: [
     ...COMMON_REMOVAL_MODS,
     {
       selector: '.c-article-body .c-article-body_item:not(.c-article-credits)',
       action: 'remove',
     },
+    // Nuxt itself cannot run offline; this rebuilds just its header scroll.
+    { selector: 'body', action: 'append', template: 'header_rsi.html' },
   ],
-
-  // keepScripts: [/\/_nuxt\/[^/]*\.js$/],
 
   layouts: {
     // A full-bleed embed with no article header of its own.
@@ -36,6 +42,7 @@ export default {
       mods: [
         ...COMMON_REMOVAL_MODS,
         { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+        { selector: 'body', action: 'append', template: 'header_rsi.html' },
       ],
     },
   },

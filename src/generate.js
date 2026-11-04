@@ -38,6 +38,14 @@ const BRANDS_DIR = new URL('./brands/', import.meta.url)
 const PARTIALS_DIR = new URL('./partials/', import.meta.url)
 
 const CSS_FILE_NAME = 'merged.css'
+
+/**
+ * Desktop window the page is scraped and screenshotted in. The platforms lay
+ * out parts of their chrome in JavaScript — e.g. RSI only centres its section
+ * navigation, without a scroll button, once it fits — and the mock freezes
+ * whatever they rendered at this size.
+ */
+export const VIEWPORT = { width: 1280, height: 900, deviceScaleFactor: 1 }
 const TIME_TO_WAIT_FOR_DYNAMIC_CONTENT = 5000
 const TIME_TO_WAIT_AFTER_SCROLL = 5000
 
@@ -157,6 +165,7 @@ async function scrapePage(config, edits, assetsDir, fetchUrlOrigin) {
   const browser = await puppeteer.launch()
   try {
     const page = await browser.newPage()
+    await page.setViewport(VIEWPORT)
     const seen = new Set()
     const keptScriptUrls = []
 
@@ -213,6 +222,13 @@ async function writeManifest(outDir, brand, layout, config, assetsDir) {
     // The element a template fork mounts its article into, baked into
     // mock.json so a consumer never has to re-derive it from a brand config.
     entryPointSelector: config.mount.selector,
+    // The article header and its byline, for a fork that fills them in
+    // itself. Left out for a layout that has no header of its own.
+    ...(config.header && {
+      headerSelector: config.header.selector,
+      headerAuthorSelector: config.header.authorSelector,
+      headerDateSelector: config.header.dateSelector,
+    }),
     sourceUrl: config.fetchUrl,
     assetsUrl: `/${ASSETS_DIRNAME}`,
     assetCount: await countFiles(assetsDir),

@@ -161,16 +161,22 @@ function DevTools() {
 }
 ```
 
-| Variable     | Example                                    | Meaning                                                |
-| ------------ | ------------------------------------------ | ------------------------------------------------------ |
-| `platform`   | `'srf'`                                    | Brand key the plugin was configured with.              |
-| `layout`     | `'default'`                                | Page layout the plugin was configured with.            |
-| `label`      | `'SRF'`                                    | Human-readable platform name, for dev-only UI.         |
-| `lang`       | `'de'`                                     | The mock's `<html lang>`.                              |
-| `entryPoint` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
+| Variable       | Example                                      | Meaning                                                      |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `platform`     | `'srf'`                                      | Brand key the plugin was configured with.                    |
+| `layout`       | `'default'`                                  | Page layout the plugin was configured with.                  |
+| `label`        | `'SRF'`                                      | Human-readable platform name, for dev-only UI.               |
+| `lang`         | `'de'`                                       | The mock's `<html lang>`.                                    |
+| `entryPoint`   | `'[data-news-landmark="article-content"]'`   | Selector of the article mount point, from `mock.json`.       |
+| `header`       | `'[data-news-landmark=article-header]'`      | Selector of the article header, from `mock.json`.            |
+| `headerAuthor` | `'[data-news-landmark=article-author-name]'` | Selector of the header's author name, from `mock.json`.      |
+| `headerDate`   | `'[data-news-landmark=article-author-date]'` | Selector of the header's publication date, from `mock.json`. |
 
-Five variables, one hook, and it is meant to stay that way — anything a fork can
-read off the mock's own DOM does not belong in here.
+The three `header*` variables are `null` for a brand or layout whose config sets
+no `header`.
+
+Eight variables, one hook, and it is meant to stay that way — anything a fork
+can read off the mock's own DOM does not belong in here.
 [`integration/mock-variables.js`](integration/mock-variables.js) is the list; a
 test fails if a variable is missing from the table above or from the types.
 
@@ -185,7 +191,10 @@ The plugin writes them into the `<head>` of the document it already generates:
     "layout": "default",
     "label": "SRF",
     "lang": "de",
-    "entryPoint": "…"
+    "entryPoint": "…",
+    "header": "…",
+    "headerAuthor": "…",
+    "headerDate": "…"
   }
 </script>
 ```
@@ -318,7 +327,7 @@ src/                    Generator — build-time only, never imported by a fork
 mocks/<brand>/          Generated, committed — the brand's default layout
   index.html            the frozen page
   mock-assets/          CSS, fonts, images it references
-  mock.json             brand, layout, lang, entry point selector, source URL, assets, date
+  mock.json             brand, layout, lang, entry point and header selectors, source URL, assets, date
 mocks/<brand>--<layout>/  Same, for each further layout
 
 preview/                Local dev harness (stands in for a fork's entry)

@@ -21,6 +21,12 @@ export default {
     { selector: '.article-lead', text: PLACEHOLDER.lead },
   ],
 
+  header: {
+    selector: '[data-area-id="article-header"]',
+    authorSelector: '[data-area-id="article-content"] .article-body p.sources',
+    dateSelector: '[data-area-id="article-header"] .article-date time',
+  },
+
   keepScripts: [/\/hbv7\/static\/js\/rts-[^/]*\.js$/],
 
   layouts: {

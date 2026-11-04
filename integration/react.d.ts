@@ -19,6 +19,12 @@ export interface MockVariables {
   lang: string | null
   /** Selector of the article mount point. */
   entryPoint: string | null
+  /** Selector of the article header, `null` where the brand defines none. */
+  header: string | null
+  /** Selector of the header's author name. */
+  headerAuthor: string | null
+  /** Selector of the header's publication date. */
+  headerDate: string | null
 }
 
 export function useMockVariables(): Readonly<MockVariables>

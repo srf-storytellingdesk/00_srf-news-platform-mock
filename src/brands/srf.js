@@ -13,6 +13,12 @@ export default {
     template: 'embed_default.html',
   },
 
+  header: {
+    selector: '[data-news-landmark=article-header]',
+    authorSelector: '[data-news-landmark=article-author-name]',
+    dateSelector: '[data-news-landmark=article-author-date]',
+  },
+
   mods: [
     ...COMMON_REMOVAL_MODS,
     { selector: 'link[crossorigin="use-credentials"]', action: 'remove' },

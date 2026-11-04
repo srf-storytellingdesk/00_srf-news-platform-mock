@@ -61,6 +61,15 @@ describe('the catalogue', () => {
     }
   })
 
+  it('passes on the header selectors of a brand that defines them', () => {
+    const variables = mockVariables(resolveMock('srf'))
+
+    expect(variables.header).toBe(resolveMock('srf').manifest.headerSelector)
+    expect(variables.header).toBeTruthy()
+    expect(variables.headerAuthor).toBeTruthy()
+    expect(variables.headerDate).toBeTruthy()
+  })
+
   it('answers with the same keys when there is no mock', () => {
     // A fork destructures the same object either way, so a key that only
     // exists in one of the two would be a `undefined` at the call site.
@@ -98,6 +107,9 @@ describe('the hook reading it back', () => {
       label: 'RTR',
       lang: 'rm',
       entryPoint: '[data-news-landmark="article-content"]',
+      header: null,
+      headerAuthor: null,
+      headerDate: null,
     })
     expect(Object.isFrozen(useMockVariables())).toBe(true)
   })

@@ -48,6 +48,21 @@ export const MOCK_VARIABLES = [
     describe: 'Selector of the article mount point, from `mock.json`.',
     read: (mock) => mock.manifest.entryPointSelector ?? null,
   },
+  {
+    key: 'header',
+    describe: 'Selector of the article header, from `mock.json`.',
+    read: (mock) => mock.manifest.headerSelector ?? null,
+  },
+  {
+    key: 'headerAuthor',
+    describe: "Selector of the header's author name, from `mock.json`.",
+    read: (mock) => mock.manifest.headerAuthorSelector ?? null,
+  },
+  {
+    key: 'headerDate',
+    describe: "Selector of the header's publication date, from `mock.json`.",
+    read: (mock) => mock.manifest.headerDateSelector ?? null,
+  },
 ]
 
 /**
@@ -61,6 +76,9 @@ export const NO_MOCK_VARIABLES = Object.freeze({
   label: null,
   lang: null,
   entryPoint: null,
+  header: null,
+  headerAuthor: null,
+  headerDate: null,
 })
 
 /**

@@ -22,8 +22,10 @@ export default {
   ],
 
   header: {
-    selector: '[data-area-id="article-header"]',
-    authorSelector: '[data-area-id="article-content"] .article-body p.sources',
+    selector:
+      '[data-area-id="article-header"], [data-area-id="article-content"] .article-part.article-lead',
+    authorSelector:
+      '[data-area-id="article-content"] [data-area-id="article-content"] .article-body.article-body p.sources',
     dateSelector: '[data-area-id="article-header"] .article-date time',
   },
 

@@ -154,8 +154,8 @@ keeping a copy of every brand's entry-point selector next to its own code:
 import { useMockVariables } from '00_srf-news-platform-mock/react'
 
 function DevTools() {
-  const { platform, label, entryPoint } = useMockVariables()
-  if (!platform) return null // no mock: this is the production build
+  const { label, entryPoint } = useMockVariables()
+  if (!import.meta.env.DEV) return null // dev-only UI
 
   return <Badge label={label} target={document.querySelector(entryPoint)} />
 }
@@ -182,7 +182,21 @@ test fails if a variable is missing from the table above or from the types.
 
 ### How the values get there
 
-The plugin writes them into the `<head>` of the document it already generates:
+In a build, the plugin compiles them straight into the fork's bundle.
+[`integration/react.js`](integration/react.js) ships with
+`const INLINED_VARIABLES = null`, and the plugin's `transform` hook rewrites
+that line with the variables of the configured mock:
+
+```js
+const INLINED_VARIABLES = { "platform": "srf", "layout": "default", … }
+```
+
+So the production bundle, running in a real CMS page, knows its platform and its
+selectors without anything in the page's markup. A fork built for `srf` reports
+`srf` there, too. To tell dev from production, use `import.meta.env.DEV`, not
+`platform`.
+
+The plugin also writes them into the `<head>` of the document it generates:
 
 ```html
 <script type="application/json" data-platform>
@@ -199,16 +213,11 @@ The plugin writes them into the `<head>` of the document it already generates:
 </script>
 ```
 
-and the hook reads that block back. Nothing is injected into the bundle, so
-there is no `define`, no bare globals, and nothing to declare in a fork's
-config. It also explains the one case that matters: the fork's production bundle
-runs in a real CMS page, which has no such block, so every variable is `null`
-there and the hook is safe to call unconditionally.
-
-The values are read at runtime, not folded in at compile time. Dev-only code
-behind `if (platform)` therefore still ships in the production bundle — for an
-article widget that is a few bytes, and it buys a surface with no build-mode
-footguns in it.
+The hook falls back to that block when nothing was compiled in. That happens in
+dev, where Vite pre-bundles this package past the plugin, and in anything that
+is not Vite. Only with neither source, outside the plugin and outside a mock, is
+every variable `null`, so the hook stays safe to call unconditionally. There is
+no `define`, no bare globals, and nothing to declare in a fork's config.
 
 TypeScript forks get the hook's types from the package; no reference directive
 or ambient declaration needed.

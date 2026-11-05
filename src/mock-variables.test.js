@@ -20,7 +20,9 @@ import {
   mockVariables,
   mockVariablesScript,
 } from '../integration/mock-variables.js'
-import platformMock from '../integration/vite.js'
+import platformMock, {
+  INLINED_VARIABLES_PLACEHOLDER,
+} from '../integration/vite.js'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const KEYS = MOCK_VARIABLES.map((variable) => variable.key)
@@ -170,6 +172,39 @@ describe('what the plugin writes', () => {
 
     expect(head).toContain('data-platform')
     expect(head).toContain('"platform":"rsi"')
+  })
+
+  it('compiles them into the hook in a build', async () => {
+    const plugin = platformMock({ brand: 'rts' })
+    plugin.configResolved({
+      command: 'build',
+      root,
+      base: '/',
+      publicDir: path.join(root, 'public'),
+      build: {},
+    })
+    const id = path.join(PACKAGE_ROOT, 'integration/react.js')
+    const code = plugin.transform(read('integration/react.js'), `${id}?v=1`)
+    const json = JSON.stringify(mockVariables(resolveMock('rts')))
+
+    expect(code).toContain(`const INLINED_VARIABLES = ${json}`)
+    expect(code).not.toContain(INLINED_VARIABLES_PLACEHOLDER)
+    expect(plugin.transform('x', path.join(root, 'react.js'))).toBeUndefined()
+
+    // And the rewritten hook answers with them, with no block in the page.
+    const file = path.join(root, 'react.js')
+    fs.writeFileSync(
+      file,
+      code.replace(
+        "'./mock-variables.js'",
+        JSON.stringify(
+          path.join(PACKAGE_ROOT, 'integration/mock-variables.js'),
+        ),
+      ),
+    )
+    vi.stubGlobal('document', { querySelector: () => null })
+    const { useMockVariables } = await import(file)
+    expect(useMockVariables()).toEqual(mockVariables(resolveMock('rts')))
   })
 
   it('puts them in the build document too', () => {

@@ -14,9 +14,10 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { DEFAULT_LAYOUT, listLayouts, resolveMock } from './index.js'
-import { mockVariablesScript } from './mock-variables.js'
+import { mockVariables, mockVariablesScript } from './mock-variables.js'
 import { createStaticMiddleware } from './static-middleware.js'
 
 const PLUGIN_NAME = 'srf-news-platform-mock'
@@ -38,6 +39,12 @@ const BANNER_ID = 'srf-news-platform-mock:generated'
  * to commit by accident.
  */
 const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
+
+/** The hook's module, whose `INLINED_VARIABLES` the build fills in. */
+const HOOK_PATH = fileURLToPath(new URL('./react.js', import.meta.url))
+
+/** The line in `react.js` the plugin swaps for the mock's variables. */
+export const INLINED_VARIABLES_PLACEHOLDER = 'const INLINED_VARIABLES = null'
 
 /**
  * @typedef {object} PlatformMockOptions
@@ -209,6 +216,20 @@ export default function platformMock(options = {}) {
       if (buildEntryHtml && id === buildEntryPath) return buildEntryHtml
     },
 
+    // Compiles the variables into the fork's bundle, so a production build in
+    // a CMS page knows them without the document's JSON block.
+    transform(code, id) {
+      if (!isHookModule(id)) return
+      if (!code.includes(INLINED_VARIABLES_PLACEHOLDER)) {
+        this.warn('No INLINED_VARIABLES placeholder in react.js — not inlined.')
+        return
+      }
+      return code.replace(
+        INLINED_VARIABLES_PLACEHOLDER,
+        `const INLINED_VARIABLES = ${JSON.stringify(mockVariables(mock))}`,
+      )
+    },
+
     // `order: 'post'` so this runs after Vite's own HTML plugin has emitted the
     // document — dropping it here means it never reaches disk, so `dist/` needs
     // no cleaning up afterwards.
@@ -342,6 +363,17 @@ function isEntryDocument(fileName, output, keys) {
   if (output.type !== 'asset' || !fileName.endsWith('.html')) return false
   if (keys.includes(fileName)) return true
   return String(output.source).includes(BANNER_ID)
+}
+
+/** Whether a module id is this package's `react.js`, whatever query it carries. */
+function isHookModule(id) {
+  const file = id.split('?')[0]
+  if (!file.endsWith('react.js')) return false
+  try {
+    return fs.realpathSync(file) === fs.realpathSync(HOOK_PATH)
+  } catch {
+    return false
+  }
 }
 
 /** Where the entry document lives, given a root and the `htmlPath` option. */

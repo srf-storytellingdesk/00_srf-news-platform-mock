@@ -16,7 +16,7 @@
  * The element the variables travel in. A JSON block rather than attributes:
  * nothing to escape, nothing executes, and it reads as itself in devtools.
  */
-export const MOCK_VARIABLES_SELECTOR = 'script[data-platform-mock]'
+export const MOCK_VARIABLES_SELECTOR = 'script[data-platform]'
 
 /**
  * Every variable a fork can read, in the order they are documented.
@@ -27,6 +27,11 @@ export const MOCK_VARIABLES = [
     key: 'platform',
     describe: 'Brand key the plugin was configured with.',
     read: (mock) => mock.brand,
+  },
+  {
+    key: 'layout',
+    describe: 'Page layout the plugin was configured with.',
+    read: (mock) => mock.layout,
   },
   {
     key: 'label',
@@ -43,19 +48,22 @@ export const MOCK_VARIABLES = [
     describe: 'Selector of the article mount point, from `mock.json`.',
     read: (mock) => mock.manifest.entryPointSelector ?? null,
   },
+  {
+    key: 'header',
+    describe: 'Selector of the article header, from `mock.json`.',
+    read: (mock) => mock.manifest.headerSelector ?? null,
+  },
+  {
+    key: 'headerAuthor',
+    describe: "Selector of the header's author name, from `mock.json`.",
+    read: (mock) => mock.manifest.headerAuthorSelector ?? null,
+  },
+  {
+    key: 'headerDate',
+    describe: "Selector of the header's publication date, from `mock.json`.",
+    read: (mock) => mock.manifest.headerDateSelector ?? null,
+  },
 ]
-
-/**
- * What `useMockVariables()` answers when there is no mock in the page. Every
- * key the plugin can write exists here, `null`, so a fork never has to guard
- * against a missing one — a test keeps this in step with the list above.
- */
-export const NO_MOCK_VARIABLES = Object.freeze({
-  platform: null,
-  label: null,
-  lang: null,
-  entryPoint: null,
-})
 
 /**
  * Resolves the variables for one mock — the exact object the hook returns.
@@ -76,5 +84,5 @@ export function mockVariables(mock) {
  */
 export function mockVariablesScript(mock) {
   const json = JSON.stringify(mockVariables(mock))
-  return `<script type="application/json" data-platform-mock>${json}</script>`
+  return `<script type="application/json" data-platform>${json}</script>`
 }

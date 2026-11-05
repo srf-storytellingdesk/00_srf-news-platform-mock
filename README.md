@@ -102,16 +102,17 @@ Pass `buildHtml: 'minimal'` to keep that bare document in `dist/` (which is what
 
 ### Plugin options
 
-| Option      | Default             | Meaning                                                                                                                                                        |
-| ----------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                               |
-| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                         |
-| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                         |
-| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                 |
-| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                           |
-| `buildHtml` | `'none'`            | `'none'` \| `'minimal'` \| `'mock'` — what ends up in `dist/`, see the table above.                                                                            |
-| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`). |
-| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                   |
+| Option      | Default             | Meaning                                                                                                                                                         |
+| ----------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brand`     | `'srf'`             | `srf` \| `rts` \| `rsi` \| `rtr` \| `swi`. Falls back to `PLATFORM_MOCK_BRAND`, then `PLATFORM`.                                                                |
+| `layout`    | `'default'`         | One of the brand's [layouts](#layouts), e.g. `'fullwidth'` for `rts`. Falls back to `PLATFORM_MOCK_LAYOUT`; a layout the brand lacks falls back to `'default'`. |
+| `entry`     | `null`              | Rewrites the mock's `<script type="module">` src. `null` keeps what the mock ships (`/src/index.jsx`).                                                          |
+| `mountId`   | `null`              | Fills the mock's `<%= id %>`. `null` leaves it for `vite-plugin-html`.                                                                                          |
+| `title`     | `null`              | Fills the mock's `<%= title %>`. Same defaulting as `mountId`.                                                                                                  |
+| `htmlPath`  | `<root>/index.html` | Where the entry document is written.                                                                                                                            |
+| `buildHtml` | `'none'`            | `'none'` \| `'minimal'` \| `'mock'` — what ends up in `dist/`, see the table above.                                                                             |
+| `assets`    | `'serve'`           | `'serve'` streams from `node_modules`; `'copy'` mirrors into `<publicDir>/mock-assets` (old symlink behaviour, and the only mode that puts assets in `dist/`).  |
+| `verbose`   | `true`              | One-line summary when the dev server starts.                                                                                                                    |
 
 ### Node API
 
@@ -120,17 +121,25 @@ Always go through this API rather than a path into `node_modules`; the repo
 layout is free to change, the API is not.
 
 ```js
-import { BRANDS, listBrands, resolveMock } from '00_srf-news-platform-mock'
+import {
+  BRANDS,
+  listBrands,
+  listLayouts,
+  resolveMock,
+} from '00_srf-news-platform-mock'
 
 const mock = resolveMock('rts')
 // {
-//   brand: 'rts', lang: 'fr',
+//   brand: 'rts', layout: 'default', lang: 'fr',
 //   dir:       '…/mocks/rts',
 //   htmlPath:  '…/mocks/rts/index.html',
 //   assetsDir: '…/mocks/rts/mock-assets',
 //   assetsUrl: '/mock-assets',
 //   manifest:  { …mock.json… },
 // }
+
+listLayouts('rts') // ['default', 'fullwidth']
+resolveMock('rts', { layout: 'fullwidth' }) // same shape, its own files
 ```
 
 Subpath exports, if you need a raw file:
@@ -145,45 +154,71 @@ keeping a copy of every brand's entry-point selector next to its own code:
 import { useMockVariables } from '00_srf-news-platform-mock/react'
 
 function DevTools() {
-  const { platform, label, entryPoint } = useMockVariables()
-  if (!platform) return null // no mock: this is the production build
+  const { label, entryPoint } = useMockVariables()
+  if (!import.meta.env.DEV) return null // dev-only UI
 
   return <Badge label={label} target={document.querySelector(entryPoint)} />
 }
 ```
 
-| Variable     | Example                                    | Meaning                                                |
-| ------------ | ------------------------------------------ | ------------------------------------------------------ |
-| `platform`   | `'srf'`                                    | Brand key the plugin was configured with.              |
-| `label`      | `'SRF'`                                    | Human-readable platform name, for dev-only UI.         |
-| `lang`       | `'de'`                                     | The mock's `<html lang>`.                              |
-| `entryPoint` | `'[data-news-landmark="article-content"]'` | Selector of the article mount point, from `mock.json`. |
+| Variable       | Example                                      | Meaning                                                      |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `platform`     | `'srf'`                                      | Brand key the plugin was configured with.                    |
+| `layout`       | `'default'`                                  | Page layout the plugin was configured with.                  |
+| `label`        | `'SRF'`                                      | Human-readable platform name, for dev-only UI.               |
+| `lang`         | `'de'`                                       | The mock's `<html lang>`.                                    |
+| `entryPoint`   | `'[data-news-landmark="article-content"]'`   | Selector of the article mount point, from `mock.json`.       |
+| `header`       | `'[data-news-landmark=article-header]'`      | Selector of the article header, from `mock.json`.            |
+| `headerAuthor` | `'[data-news-landmark=article-author-name]'` | Selector of the header's author name, from `mock.json`.      |
+| `headerDate`   | `'[data-news-landmark=article-author-date]'` | Selector of the header's publication date, from `mock.json`. |
 
-Four variables, one hook, and it is meant to stay that way — anything a fork can
-read off the mock's own DOM does not belong in here.
+The three `header*` variables are `null` for a brand or layout whose config sets
+no `header`.
+
+Eight variables, one hook, and it is meant to stay that way — anything a fork
+can read off the mock's own DOM does not belong in here.
 [`integration/mock-variables.js`](integration/mock-variables.js) is the list; a
 test fails if a variable is missing from the table above or from the types.
 
 ### How the values get there
 
-The plugin writes them into the `<head>` of the document it already generates:
+In a build, the plugin compiles them straight into the fork's bundle.
+[`integration/react.js`](integration/react.js) ships with
+`const INLINED_VARIABLES = null`, and the plugin's `transform` hook rewrites
+that line with the variables of the configured mock:
+
+```js
+const INLINED_VARIABLES = { "platform": "srf", "layout": "default", … }
+```
+
+So the production bundle, running in a real CMS page, knows its platform and its
+selectors without anything in the page's markup. A fork built for `srf` reports
+`srf` there, too. To tell dev from production, use `import.meta.env.DEV`, not
+`platform`.
+
+The plugin also writes them into the `<head>` of the document it generates:
 
 ```html
-<script type="application/json" data-platform-mock>
-  { "platform": "srf", "label": "SRF", "lang": "de", "entryPoint": "…" }
+<script type="application/json" data-platform>
+  {
+    "platform": "srf",
+    "layout": "default",
+    "label": "SRF",
+    "lang": "de",
+    "entryPoint": "…",
+    "header": "…",
+    "headerAuthor": "…",
+    "headerDate": "…"
+  }
 </script>
 ```
 
-and the hook reads that block back. Nothing is injected into the bundle, so
-there is no `define`, no bare globals, and nothing to declare in a fork's
-config. It also explains the one case that matters: the fork's production bundle
-runs in a real CMS page, which has no such block, so every variable is `null`
-there and the hook is safe to call unconditionally.
-
-The values are read at runtime, not folded in at compile time. Dev-only code
-behind `if (platform)` therefore still ships in the production bundle — for an
-article widget that is a few bytes, and it buys a surface with no build-mode
-footguns in it.
+The hook falls back to that block when nothing was compiled in. That happens in
+dev, where Vite pre-bundles this package past the plugin, and in anything that
+is not Vite. Only with neither source, outside the plugin and outside a mock,
+does the hook return an empty object, every variable `undefined`. It is still
+safe to call unconditionally and to destructure. There is no `define`, no bare
+globals, and nothing to declare in a fork's config.
 
 TypeScript forks get the hook's types from the package; no reference directive
 or ambient declaration needed.
@@ -201,17 +236,35 @@ or ambient declaration needed.
 A fork's rendered interface language follows the mock's `lang` attribute — the
 same mechanism the CMS uses in production.
 
+### Layouts
+
+Every brand has a `default` layout, its regular article page. Some platforms
+offer further article layouts, and each one ships as a mock of its own:
+
+| Brand | Layout      | What it is                                                      |
+| ----- | ----------- | --------------------------------------------------------------- |
+| `rts` | `fullwidth` | Full-bleed embed with no article header, edge to edge at 1280px |
+
+```js
+platformMock({ brand: 'rts', layout: 'fullwidth' })
+```
+
+The `layout` mock variable says which one a fork is running in, and `entryPoint`
+is that layout's own mount selector.
+
 `pnpm brands` prints what is in this repo, with asset counts and generation
-dates. `screenshots/<brand>.png` is a full-page reference render of each.
+dates. `screenshots/<brand>.png` is a full-page reference render of each, and
+`screenshots/<brand>--<layout>.png` of each further layout.
 
 ## Maintaining this repo
 
 ```sh
 pnpm install
 
-pnpm dev                  # preview a mock (PLATFORM_MOCK_BRAND=rts pnpm dev)
+pnpm dev                  # preview a mock (pnpm dev rts, pnpm dev rts:fullwidth)
 pnpm brands               # list the generated mocks
-pnpm mock srf             # re-scrape one brand into mocks/srf/
+pnpm mock srf             # re-scrape one brand (every layout) into mocks/
+pnpm mock rts:fullwidth   # re-scrape one layout into mocks/rts--fullwidth/
 pnpm mock:all             # re-scrape all five
 pnpm screenshot srf       # re-capture screenshots/srf.png only
 pnpm check                # lint + format + test
@@ -266,7 +319,7 @@ a scrape is reviewed for a day or two before it goes out.
 
 ```
 integration/            Consumer-facing surface — the only supported API
-  index.js              resolveMock(), listBrands(), BRANDS
+  index.js              resolveMock(), listBrands(), listLayouts(), BRANDS
   vite.js               the Vite plugin
   mock-variables.js     the one list of mock variables — add one here
   react.js              useMockVariables(), what a fork imports
@@ -281,10 +334,11 @@ src/                    Generator — build-time only, never imported by a fork
   browser/              functions serialised into the scraped page
   utils/                HTML/CSS rewriting helpers
 
-mocks/<brand>/          Generated, committed
+mocks/<brand>/          Generated, committed — the brand's default layout
   index.html            the frozen page
   mock-assets/          CSS, fonts, images it references
-  mock.json             brand, lang, entry point selector, source URL, assets, date
+  mock.json             brand, layout, lang, entry point and header selectors, source URL, assets, date
+mocks/<brand>--<layout>/  Same, for each further layout
 
 preview/                Local dev harness (stands in for a fork's entry)
 screenshots/            Reference renders
@@ -314,6 +368,18 @@ No editorial text survives step 3 — the mocks carry chrome and layout only.
 3. If the platform's article markup differs, add a partial in `src/partials/`
    and point `mount.template` at it.
 4. `pnpm mock <key>`, check the screenshot, commit.
+
+### Adding a layout
+
+1. Add an entry under `layouts` in the brand config, with its own `fetchUrl` — a
+   real article in that layout. Don't derive one layout from another's page:
+   `merged.css` is purged to the classes the scraped page uses, so the other
+   layout's rules are already gone.
+2. Override only what differs. Top-level keys replace the brand's — a layout
+   that sets `mods` restates them all, `...COMMON_REMOVAL_MODS` included — while
+   `mount` merges key by key, so a layout can swap just its selector.
+3. `pnpm mock <brand>:<layout>`, check the screenshot, add a row to the
+   [layouts table](#layouts), commit.
 
 ### The `/mock-assets` prefix
 

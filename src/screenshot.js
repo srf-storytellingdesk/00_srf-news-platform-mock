@@ -10,20 +10,23 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
 
+import { DEFAULT_LAYOUT, mockDirName } from '../integration/index.js'
 import { unlockPageScroll } from './browser/page-actions.js'
+import { VIEWPORT } from './generate.js'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SCREENSHOTS_DIR = path.join(PACKAGE_ROOT, 'screenshots')
-const VIEWPORT_WIDTH = 1280
 const LOADING_SCREEN = '[data-news-landmark="news-loading-screen"]'
 
 /**
  * @param {string} brand
+ * @param {string} [layout]
  * @returns {Promise<string>} Absolute path of the written PNG.
  */
-export async function takeScreenshot(brand) {
+export async function takeScreenshot(brand, layout = DEFAULT_LAYOUT) {
   // The preview's vite.config.js reads the brand from the environment.
   process.env.PLATFORM_MOCK_BRAND = brand
+  process.env.PLATFORM_MOCK_LAYOUT = layout
 
   const { createServer } = await import('vite')
   const server = await createServer({
@@ -42,25 +45,22 @@ export async function takeScreenshot(brand) {
   }
 
   await fs.mkdir(SCREENSHOTS_DIR, { recursive: true })
-  const outPath = path.join(SCREENSHOTS_DIR, `${brand}.png`)
+  const fileName = `${mockDirName(brand, layout)}.png`
+  const outPath = path.join(SCREENSHOTS_DIR, fileName)
   const browser = await puppeteer.launch()
 
   try {
     const page = await browser.newPage()
-    await page.setViewport({
-      width: VIEWPORT_WIDTH,
-      height: 900,
-      deviceScaleFactor: 1,
-    })
+    await page.setViewport(VIEWPORT)
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
     await page.waitForSelector(LOADING_SCREEN, { hidden: true, timeout: 30000 })
 
     const contentHeight = await page.evaluate(unlockPageScroll, LOADING_SCREEN)
-    await page.setViewport({ width: VIEWPORT_WIDTH, height: contentHeight })
+    await page.setViewport({ ...VIEWPORT, height: contentHeight })
     await page.screenshot({ path: outPath })
 
     console.log(
-      `  ✓ screenshots/${brand}.png (${VIEWPORT_WIDTH}×${contentHeight})`,
+      `  ✓ screenshots/${fileName} (${VIEWPORT.width}×${contentHeight})`,
     )
     return outPath
   } finally {

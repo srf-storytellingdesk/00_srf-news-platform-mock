@@ -40,6 +40,14 @@ export const PLACEHOLDER = {
  */
 
 /**
+ * @typedef {object} Header
+ * @property {string} selector       The article header. Baked into `mock.json`
+ *   as `headerSelector`, like the two below.
+ * @property {string} authorSelector Author name(s) in the byline.
+ * @property {string} dateSelector   Publication date in the byline.
+ */
+
+/**
  * One edit to the scraped page. `remove` drops every match; the other actions
  * put content into the first match — `text` as a literal string, or the
  * partial named by `template`.
@@ -57,7 +65,15 @@ export const PLACEHOLDER = {
  * @property {string} lang     Value for the mock's `<html lang>`.
  * @property {string} fetchUrl Article page to scrape.
  * @property {Mount} mount     Where a template fork mounts its article.
+ * @property {Header} [header] The article header, for a fork that fills it in.
  * @property {Mod[]} mods
  *   Edits applied in order before the mount: strip what needs a live backend
  *   and swap editorial copy for placeholders.
+ * @property {RegExp[]} [keepScripts]
+ *   Absolute URLs of platform scripts the mock keeps, even though a mod
+ *   removes `script`.
+ * @property {Record<string, Partial<BrandConfig>>} [layouts]
+ *   Further mocks scraped from other article types, written to
+ *   `mocks/<brand>--<layout>/`. Top-level keys replace the base ones — a layout
+ *   that sets `mods` restates them all — while `mount` merges key by key.
  */

@@ -1,4 +1,4 @@
-import { COMMON_REMOVAL_MODS, PLACEHOLDER } from './_shared.js'
+import { COMMON_REMOVAL_MODS } from './_shared.js'
 
 /** @type {import('./_shared.js').BrandConfig} */
 export default {
@@ -14,15 +14,38 @@ export default {
     template: 'embed_rsi.html',
   },
 
+  header: {
+    selector:
+      'article.s-article header:has(.c-article-header), article.s-article section .c-article-credits, article.s-article .container > *:not(:has(.c-article-body))',
+    authorSelector: 'article.s-article section .c-article-credits',
+    dateSelector: 'article.s-article .infobarElement > span',
+  },
+
   mods: [
     ...COMMON_REMOVAL_MODS,
+    { selector: 'title', text: '{{ARTICLE_TITLE}}' },
     {
       selector: '.c-article-body .c-article-body_item:not(.c-article-credits)',
       action: 'remove',
     },
-    { selector: 'title', text: '{{ARTICLE_TITLE}}' },
-    { selector: '.c-article-header h1', text: PLACEHOLDER.title },
-    { selector: '.c-article-credits span span', text: PLACEHOLDER.authors },
-    { selector: '.c-article-header h2', text: PLACEHOLDER.lead },
+    // Nuxt itself cannot run offline; this rebuilds just its header scroll.
+    { selector: 'body', action: 'append', template: 'header_rsi.html' },
   ],
+
+  layouts: {
+    // A full-bleed embed with no article header of its own.
+    fullwidth: {
+      fetchUrl:
+        'https://www.rsi.ch/info/svizzera/Alptransit-un-decennio-sfrecciando-in-treno-nel-tunnel-dei-record--3772900.html',
+      mount: {
+        selector: '.s-article-gran-formato',
+        action: 'replace',
+      },
+      mods: [
+        ...COMMON_REMOVAL_MODS,
+        { selector: 'title', text: '{{ARTICLE_TITLE}}' },
+        { selector: 'body', action: 'append', template: 'header_rsi.html' },
+      ],
+    },
+  },
 }

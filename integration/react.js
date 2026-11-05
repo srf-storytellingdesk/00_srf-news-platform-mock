@@ -7,10 +7,13 @@
  * where. In a bundle built with the Vite plugin the values are compiled in
  * (`INLINED_VARIABLES` below), so the production bundle in a real CMS page knows
  * them too. Otherwise it reads the JSON block the plugin writes into the mock
- * document — see `mock-variables.js`. With neither, every variable is `null`
- * and nothing throws.
+ * document — see `mock-variables.js`. With neither, it answers with an empty
+ * object — every variable `undefined` — and nothing throws.
  */
-import { MOCK_VARIABLES_SELECTOR, NO_MOCK_VARIABLES } from './mock-variables.js'
+import { MOCK_VARIABLES_SELECTOR } from './mock-variables.js'
+
+/** The answer when there is no mock: every variable `undefined`. */
+const NO_MOCK = Object.freeze({})
 
 /**
  * The variables compiled into the bundle. The Vite plugin rewrites this line
@@ -39,23 +42,20 @@ export function useMockVariables() {
 function readMockVariables() {
   // Compiled in by the Vite plugin — the only source in a production bundle.
   if (INLINED_VARIABLES) {
-    return Object.freeze({ ...NO_MOCK_VARIABLES, ...INLINED_VARIABLES })
+    return Object.freeze(INLINED_VARIABLES)
   }
 
-  if (typeof document === 'undefined') return NO_MOCK_VARIABLES
+  if (typeof document === 'undefined') return NO_MOCK
 
   const block = document.querySelector(MOCK_VARIABLES_SELECTOR)
-  if (!block) return NO_MOCK_VARIABLES
+  if (!block) return NO_MOCK
 
   try {
-    return Object.freeze({
-      ...NO_MOCK_VARIABLES,
-      ...JSON.parse(block.textContent),
-    })
+    return Object.freeze(JSON.parse(block.textContent))
   } catch (error) {
     console.warn(
       `[platform-mock] Ignoring unreadable variables: ${error.message}`,
     )
-    return NO_MOCK_VARIABLES
+    return NO_MOCK
   }
 }

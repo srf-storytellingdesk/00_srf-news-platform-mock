@@ -16,7 +16,6 @@ import { BRANDS, resolveMock } from '../integration/index.js'
 import {
   MOCK_VARIABLES,
   MOCK_VARIABLES_SELECTOR,
-  NO_MOCK_VARIABLES,
   mockVariables,
   mockVariablesScript,
 } from '../integration/mock-variables.js'
@@ -71,13 +70,6 @@ describe('the catalogue', () => {
     expect(variables.headerAuthor).toBeTruthy()
     expect(variables.headerDate).toBeTruthy()
   })
-
-  it('answers with the same keys when there is no mock', () => {
-    // A fork destructures the same object either way, so a key that only
-    // exists in one of the two would be a `undefined` at the call site.
-    expect(Object.keys(NO_MOCK_VARIABLES)).toEqual(KEYS)
-    for (const key of KEYS) expect(NO_MOCK_VARIABLES[key], key).toBeNull()
-  })
 })
 
 describe('the block in the document', () => {
@@ -118,24 +110,16 @@ describe('the hook reading it back', () => {
 
   it('reports no mock when the page has no block', async () => {
     const useMockVariables = await loadHook(null)
-    expect(useMockVariables()).toEqual(NO_MOCK_VARIABLES)
+    expect(useMockVariables()).toEqual({})
   })
 
   it('survives a block it cannot parse', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const useMockVariables = await loadHook('{ not json')
 
-    expect(useMockVariables()).toEqual(NO_MOCK_VARIABLES)
+    expect(useMockVariables()).toEqual({})
     expect(warn).toHaveBeenCalledOnce()
     warn.mockRestore()
-  })
-
-  it('fills in a variable an older mock did not write', async () => {
-    const useMockVariables = await loadHook('{"platform":"srf"}')
-    expect(useMockVariables()).toEqual({
-      ...NO_MOCK_VARIABLES,
-      platform: 'srf',
-    })
   })
 })
 
@@ -226,7 +210,9 @@ describe('what documents the variables', () => {
   it('types every variable and every export', () => {
     const types = read('integration/react.d.ts')
     for (const key of KEYS) {
-      expect(types, `type of ${key}`).toMatch(new RegExp(`^\\s*${key}:`, 'm'))
+      expect(types, `type of ${key}`).toMatch(
+        new RegExp(`^\\s*${key}\\??:`, 'm'),
+      )
     }
     for (const [, name] of read('integration/react.js').matchAll(
       /^export function (\w+)/gm,

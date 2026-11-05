@@ -66,22 +66,6 @@ export const MOCK_VARIABLES = [
 ]
 
 /**
- * What `useMockVariables()` answers when there is no mock in the page. Every
- * key the plugin can write exists here, `null`, so a fork never has to guard
- * against a missing one — a test keeps this in step with the list above.
- */
-export const NO_MOCK_VARIABLES = Object.freeze({
-  platform: null,
-  layout: null,
-  label: null,
-  lang: null,
-  entryPoint: null,
-  header: null,
-  headerAuthor: null,
-  headerDate: null,
-})
-
-/**
  * Resolves the variables for one mock — the exact object the hook returns.
  * @param {import('./index.js').Mock} mock
  * @returns {Record<string, string|null>}

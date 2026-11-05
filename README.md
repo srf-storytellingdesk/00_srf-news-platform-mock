@@ -215,9 +215,10 @@ The plugin also writes them into the `<head>` of the document it generates:
 
 The hook falls back to that block when nothing was compiled in. That happens in
 dev, where Vite pre-bundles this package past the plugin, and in anything that
-is not Vite. Only with neither source, outside the plugin and outside a mock, is
-every variable `null`, so the hook stays safe to call unconditionally. There is
-no `define`, no bare globals, and nothing to declare in a fork's config.
+is not Vite. Only with neither source, outside the plugin and outside a mock,
+does the hook return an empty object, every variable `undefined`. It is still
+safe to call unconditionally and to destructure. There is no `define`, no bare
+globals, and nothing to declare in a fork's config.
 
 TypeScript forks get the hook's types from the package; no reference directive
 or ambient declaration needed.

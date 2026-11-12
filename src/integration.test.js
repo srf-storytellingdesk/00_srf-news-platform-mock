@@ -313,6 +313,39 @@ describe('platformMock vite plugin', () => {
     expect(fs.existsSync(path.join(root, 'public'))).toBe(false)
   })
 
+  /** Stand-in for a dev or preview server; records where middleware is mounted. */
+  const fakeServer = () => {
+    const mounts = []
+    return {
+      mounts,
+      config: { base: '/widgets/demo/' },
+      middlewares: { use: (mountPath) => mounts.push(mountPath) },
+    }
+  }
+
+  it('serves the assets on the dev and the preview server', () => {
+    const plugin = platformMock({ brand: 'srf', verbose: false })
+    plugin.configResolved(fakeConfig('serve'))
+
+    for (const hook of ['configureServer', 'configurePreviewServer']) {
+      const server = fakeServer()
+      plugin[hook](server)
+      expect(server.mounts).toEqual([
+        '/mock-assets',
+        '/widgets/demo/mock-assets',
+      ])
+    }
+  })
+
+  it('serves no assets in copy mode — they are in the build output', () => {
+    const plugin = platformMock({ brand: 'srf', assets: 'copy' })
+    plugin.configResolved(fakeConfig('serve'))
+
+    const server = fakeServer()
+    plugin.configurePreviewServer(server)
+    expect(server.mounts).toEqual([])
+  })
+
   it('rejects invalid options up front', () => {
     expect(() => platformMock({ brand: 'srf', assets: 'symlink' })) //
       .toThrow(/Invalid `assets`/)

@@ -67,13 +67,14 @@ const BUILD_ENTRY_NAME = '.platform-mock-entry.html'
  *   mount-point document is served to it from memory — it is just dropped
  *   from the output again. `'minimal'` keeps that bare document in `dist/`
  *   (use it if you want `vite preview` to work). `'mock'` builds the full
- *   platform page — pair it with `assets: 'copy'` for a self-contained static
- *   preview.
+ *   platform page — `vite preview` serves its assets, pair it with
+ *   `assets: 'copy'` only for a static preview hosted somewhere else.
  * @property {'serve'|'copy'} [assets]
  *   `'serve'` (default) streams the assets straight out of node_modules via
- *   dev middleware — nothing lands in the fork's working tree. `'copy'`
- *   mirrors them into `<publicDir>/mock-assets`, which reproduces the old
- *   symlink behaviour and makes them part of the build output.
+ *   middleware on the dev and the preview server — nothing lands in the
+ *   fork's working tree or build output. `'copy'` mirrors them into
+ *   `<publicDir>/mock-assets`, which reproduces the old symlink behaviour and
+ *   makes them part of the build output.
  * @property {boolean} [verbose]
  *   Log a one-line summary when the dev server starts. Defaults to `true`.
  */
@@ -228,17 +229,7 @@ export default function platformMock(options = {}) {
     },
 
     configureServer(server) {
-      if (assets === 'serve') {
-        const middleware = createStaticMiddleware(mock.assetsDir)
-        // Two mounts, both load-bearing: Vite's dev HTML transform rewrites the
-        // mock's root-relative asset URLs to `<base>/mock-assets/…`, so with
-        // a non-root base that is where most requests land. The bare mount
-        // still serves what the transform never sees — url() references inside
-        // merged.css, and anything requested at runtime.
-        for (const mountPath of assetMountPaths(server.config.base)) {
-          server.middlewares.use(mountPath, middleware)
-        }
-      }
+      if (assets === 'serve') mountAssets(server, mock)
 
       if (!verbose) return
       server.httpServer?.once('listening', () => {
@@ -252,6 +243,26 @@ export default function platformMock(options = {}) {
         )
       })
     },
+
+    // `vite preview` serves a `buildHtml: 'mock'` build, whose page references
+    // the same assets — without this they would only exist with `'copy'`.
+    configurePreviewServer(server) {
+      if (assets === 'serve') mountAssets(server, mock)
+    },
+  }
+}
+
+/**
+ * Mounts the mock's assets on a dev or preview server. Two mounts, both
+ * load-bearing: Vite rewrites the mock's root-relative asset URLs to
+ * `<base>/mock-assets/…`, so with a non-root base that is where most requests
+ * land. The bare mount still serves what the rewrite never sees — url()
+ * references inside merged.css, and anything requested at runtime.
+ */
+function mountAssets(server, mock) {
+  const middleware = createStaticMiddleware(mock.assetsDir)
+  for (const mountPath of assetMountPaths(server.config.base)) {
+    server.middlewares.use(mountPath, middleware)
   }
 }
 

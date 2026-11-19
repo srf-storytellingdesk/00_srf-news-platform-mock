@@ -101,9 +101,9 @@ describe('the hook reading it back', () => {
       label: 'RTR',
       lang: 'rm',
       entryPoint: '[data-news-landmark="article-content"]',
-      header: null,
-      headerAuthor: null,
-      headerDate: null,
+      header: '[data-news-landmark=article-header]',
+      headerAuthor: '[data-news-landmark=article-author-name]',
+      headerDate: '[data-news-landmark=article-author-date]',
     })
     expect(Object.isFrozen(useMockVariables())).toBe(true)
   })

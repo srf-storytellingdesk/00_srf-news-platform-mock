@@ -7,16 +7,28 @@
 
 export type MockPlatform = 'srf' | 'rts' | 'rsi' | 'rtr' | 'swi'
 
-/** Everything this package tells a fork about the mock in the current build. */
+/**
+ * Everything this package tells a fork about the mock in the current build.
+ * Without a mock (no Vite plugin, no block in the page) the object is empty,
+ * so every field is `undefined`.
+ */
 export interface MockVariables {
-  /** Brand key, or `null` in a build that is not running against a mock. */
-  platform: MockPlatform | null
+  /** Brand key the plugin was configured with. */
+  platform?: MockPlatform
+  /** Page layout of the mock — `'default'`, or e.g. `'fullwidth'`. */
+  layout?: string
   /** Human-readable platform name, for dev-only UI. */
-  label: string | null
+  label?: string
   /** The mock's `<html lang>`. */
-  lang: string | null
+  lang?: string
   /** Selector of the article mount point. */
-  entryPoint: string | null
+  entryPoint?: string | null
+  /** Selector of the article header, `null` where the brand defines none. */
+  header?: string | null
+  /** Selector of the header's author name. */
+  headerAuthor?: string | null
+  /** Selector of the header's publication date. */
+  headerDate?: string | null
 }
 
 export function useMockVariables(): Readonly<MockVariables>

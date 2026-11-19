@@ -14,6 +14,7 @@ import platformMock from './integration/vite.js'
 const MOUNT_ID = 'platform-mock-preview'
 
 const brand = process.env.PLATFORM_MOCK_BRAND || 'srf'
+const layout = process.env.PLATFORM_MOCK_LAYOUT || 'default'
 
 export default defineConfig({
   // A non-root base on purpose: the forks deploy under /widgets/<name>/, so the
@@ -29,9 +30,10 @@ export default defineConfig({
   plugins: [
     platformMock({
       brand,
+      layout,
       entry: '/preview/main.jsx',
       mountId: MOUNT_ID,
-      title: `Platform mock — ${brand}`,
+      title: `Platform mock — ${brand} (${layout})`,
     }),
     react(),
   ],

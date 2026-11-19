@@ -1,0 +1,64 @@
+<!--
+  Scroll behaviour of the RSI header, rebuilt without Nuxt. Mirrors the live
+  composables useInitialScroll and useStickyHeader: the page scrolls inside
+  #root, starts scrolled past the header's navigation band, collapses the
+  header on any scroll down and expands it again on a fast scroll up.
+-->
+<script>
+  ;(() => {
+    const root = document.getElementById("root")
+    const header = document.getElementById("__header")
+    const bar = header?.firstElementChild
+    const container = bar?.firstElementChild
+    if (!root || !container) return
+
+    const THRESHOLD = 24 // px scrolled before the header counts as sticked
+    const SPEED_THRESHOLD = 1 // px/ms of upward scroll that expands it
+    const PADDING_Y = parseFloat(bar.style.paddingTop) * 2
+    const TOP_HEADER = parseFloat(header.style.height)
+    const BODY_HEADER = parseFloat(header.style.marginBottom)
+    // 117 for an article with a section navigation, +14 on a gran formato.
+    const INITIAL_SCROLL =
+      117 + (document.querySelector(".s-article-gran-formato") ? 14 : 0)
+
+    let expanded = Boolean(location.hash)
+    let lastY = root.scrollTop
+    let lastTime = performance.now()
+
+    const render = () => {
+      const sticked = !expanded || root.scrollTop > THRESHOLD
+      bar.classList.toggle("shadow-floating", sticked)
+      bar.classList.toggle("border-neutral-200", sticked)
+      bar.classList.toggle("border-transparent", !sticked)
+      container.classList.toggle("overflow-hidden", !expanded)
+      container.style.maxHeight = `${
+        expanded ? TOP_HEADER + BODY_HEADER : TOP_HEADER - PADDING_Y
+      }px`
+    }
+
+    root.addEventListener(
+      "scroll",
+      () => {
+        const y = root.scrollTop
+        const now = performance.now()
+        const delta = y - lastY
+        const elapsed = now - lastTime
+        lastY = y
+        lastTime = now
+
+        const sticked = !expanded || y > THRESHOLD
+        if (!sticked) expanded = true
+        else if (delta > 0) expanded = false
+        else if (-delta / elapsed > SPEED_THRESHOLD) expanded = true
+        render()
+      },
+      { passive: true },
+    )
+
+    if (!expanded) {
+      root.scrollTop = INITIAL_SCROLL
+      lastY = root.scrollTop
+    }
+    render()
+  })()
+</script>

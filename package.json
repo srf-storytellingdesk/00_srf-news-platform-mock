@@ -35,7 +35,7 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "node src/cli.js dev",
     "mock": "node src/cli.js generate",
     "mock:all": "node src/cli.js generate all",
     "screenshot": "node src/cli.js screenshot",

@@ -14,6 +14,13 @@ export default {
     template: 'embed_swi.html',
   },
 
+  header: {
+    selector:
+      'article .article-header, article .article-main .article-meta-row, article .article-main .article-meta-list',
+    authorSelector: 'article .article-meta-list > address',
+    dateSelector: 'article .article-date > time',
+  },
+
   mods: [
     ...COMMON_REMOVAL_MODS,
     {
